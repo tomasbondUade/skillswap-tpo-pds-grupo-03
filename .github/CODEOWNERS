@@ -1,2 +1,2 @@
-# Every pull request requires review from the repository owner.
-* @tomasbondUade
+# Notify the designated reviewers; the workflow chooses who must approve based on PR author.
+* @tomasbondUade @Juliballes
