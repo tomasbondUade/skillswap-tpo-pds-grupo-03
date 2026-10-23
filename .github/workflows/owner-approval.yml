@@ -1,0 +1,56 @@
+name: Owner approval
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    branches: [main]
+    types: [submitted, edited, dismissed]
+
+permissions:
+  pull-requests: read
+
+concurrency:
+  group: owner-approval-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  approval:
+    name: Owner approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.pull_request.draft != true
+    steps:
+      - name: Check required approval for the current commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$PR_AUTHOR" == "tomasbondUade" ]]; then
+            required_reviewer="Juliballes"
+          else
+            required_reviewer="tomasbondUade"
+          fi
+
+          latest_review_state="$(gh api --paginate \
+            "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+            | jq -sr --arg reviewer "$required_reviewer" --arg head "$PR_HEAD_SHA" '
+                add
+                | map(select(.user.login == $reviewer and .commit_id == $head))
+                | sort_by(.submitted_at // "")
+                | last
+                | .state // ""
+              ')"
+
+          if [[ "$latest_review_state" != "APPROVED" ]]; then
+            echo "::error::Approval from @$required_reviewer on the current commit is required."
+            exit 1
+          fi
+
+          echo "Approved by @$required_reviewer on the current commit."
