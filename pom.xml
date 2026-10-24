@@ -9,10 +9,10 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hibernate.version>7.2.1.Final</hibernate.version>
-        <mysql.version>9.7.0</mysql.version>
-        <flyway.version>12.8.1</flyway.version>
-        <junit.version>6.1.0</junit.version>
+        <hibernate.version>7.4.13.Final</hibernate.version>
+        <mysql.version>26.10.0</mysql.version>
+        <flyway.version>13.10.3</flyway.version>
+        <junit.version>6.1.3</junit.version>
     </properties>
 
     <dependencies>
@@ -48,12 +48,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>3.16.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.6.0</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
                 </configuration>
@@ -61,7 +61,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.6.3</version>
+                <version>3.6.4</version>
                 <configuration>
                     <mainClass>ar.edu.uade.skillswap.SkillSwapApplication</mainClass>
                 </configuration>
