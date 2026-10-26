@@ -1,0 +1,181 @@
+@startuml
+title SkillSwap — Modelo de dominio
+skinparam packageStyle rectangle
+hide empty members
+
+package "domain.model" {
+  class Profile {
+    - userId: String
+    - reputation: double
+    - ratingCount: int
+    - active: boolean
+    + updateDetails(actor, ...)
+    + updateAvailability(actor, slots)
+    + recalculateReputation(ratings)
+    + deactivate(actor)
+  }
+
+  class AvailabilitySlot {
+    - startsAt: LocalDateTime
+    - endsAt: LocalDateTime
+    - capacity: int
+    - reserved: int
+    + remaining(): int
+  }
+
+  class Publication {
+    - authorUserId: String
+    - state: PublicationState
+    - basePrice: SkillCoins
+    + publish(actor)
+    + reserve(slotId)
+    + recordBookingRequest(requester, slotId)
+  }
+
+  enum PublicationStatus {
+    DRAFT
+    PUBLISHED
+    PAUSED
+    CLOSED
+    CANCELLED
+  }
+
+  class Booking {
+    - buyerUserId: String
+    - providerUserId: String
+    - state: BookingState
+    - price: SkillCoins
+    - refund: SkillCoins
+    + accept(actor)
+    + confirmPayment(actor)
+    + cancel(actor, reason, refund)
+    + complete(actor)
+  }
+
+  enum BookingStatus {
+    PENDING
+    ACCEPTED
+    CONFIRMED
+    IN_PROGRESS
+    COMPLETED
+    REJECTED
+    CANCELLED
+  }
+
+  class SkillCoins <<Value Object>> {
+    + amount: int
+    + plus(other): SkillCoins
+    + minus(other): SkillCoins
+  }
+
+  class Wallet {
+    - userId: String
+    - balance: SkillCoins
+    + credit(amount, concept)
+    + debit(amount, concept)
+  }
+
+  class LedgerEntry <<Value Object>> {
+    + amount: int
+    + resultingBalance: int
+    + occurredAt: LocalDateTime
+  }
+
+  class Rating {
+    - bookingId: String
+    - authorUserId: String
+    - subjectUserId: String
+    - score: int
+    + forCompletedBooking(booking, author, score, comment): Rating
+  }
+
+  class StatusHistoryEntry <<Value Object>> {
+    + from: String
+    + to: String
+    + actorUserId: String
+    + reason: String
+    + occurredAt: LocalDateTime
+  }
+}
+
+package "domain.state" {
+  interface PublicationState <<State>>
+  class PublicationStates.Draft <<Singleton enum>>
+  class PublicationStates.Published <<Singleton enum>>
+  class PublicationStates.Paused <<Singleton enum>>
+  class PublicationStates.Closed <<Singleton enum>>
+  class PublicationStates.Cancelled <<Singleton enum>>
+
+  interface BookingState <<State>>
+  class BookingStates.Pending <<Singleton enum>>
+  class BookingStates.Accepted <<Singleton enum>>
+  class BookingStates.Confirmed <<Singleton enum>>
+  class BookingStates.InProgress <<Singleton enum>>
+  class BookingStates.Completed <<Singleton enum>>
+  class BookingStates.Rejected <<Singleton enum>>
+  class BookingStates.Cancelled <<Singleton enum>>
+}
+
+package "domain.policy" {
+  interface RefundPolicy <<Strategy>> {
+    + refundFor(booking, cancelledAt, sessionStartsAt): SkillCoins
+  }
+  class StandardRefundPolicy
+  class FlexibleRefundPolicy
+}
+
+package "domain.model" {
+  interface RecommendationStrategy <<Strategy>> {
+    + recommend(profile, candidates, limit): List<Publication>
+  }
+  class SkillAffinityStrategy
+  class RecentPopularityStrategy
+}
+
+Profile "1" *-- "0..*" AvailabilitySlot : disponibilidad
+Publication "1" *-- "0..*" AvailabilitySlot : franjas publicables
+Publication "1" *-- "0..*" StatusHistoryEntry : historial
+Booking "1" *-- "0..*" StatusHistoryEntry : historial
+Wallet "1" *-- "0..*" LedgerEntry : movimientos
+Wallet --> SkillCoins : saldo
+Publication --> SkillCoins : precio base
+Booking --> SkillCoins : precio / reintegro
+Booking "0..*" --> "1" Publication : se origina en
+Rating "0..*" --> "1" Booking : califica contratación
+Rating "0..*" ..> "1" Profile : subjectUserId / reputación derivada
+
+Publication --> PublicationState : estado actual
+Booking --> BookingState : estado actual
+PublicationState ..> PublicationStatus : expone
+BookingState ..> BookingStatus : expone
+PublicationStates.Draft ..|> PublicationState
+PublicationStates.Published ..|> PublicationState
+PublicationStates.Paused ..|> PublicationState
+PublicationStates.Closed ..|> PublicationState
+PublicationStates.Cancelled ..|> PublicationState
+BookingStates.Pending ..|> BookingState
+BookingStates.Accepted ..|> BookingState
+BookingStates.Confirmed ..|> BookingState
+BookingStates.InProgress ..|> BookingState
+BookingStates.Completed ..|> BookingState
+BookingStates.Rejected ..|> BookingState
+BookingStates.Cancelled ..|> BookingState
+
+StandardRefundPolicy ..|> RefundPolicy
+FlexibleRefundPolicy ..|> RefundPolicy
+SkillAffinityStrategy ..|> RecommendationStrategy
+RecentPopularityStrategy ..|> RecommendationStrategy
+
+note right of Rating
+  La fábrica de dominio exige que la contratación
+  esté completada y que quien califica sea participante.
+  La unicidad por autor y contratación se garantiza
+  en el puerto de persistencia/caso de uso.
+end note
+
+note bottom of AvailabilitySlot
+  La franja valida el intervalo y la capacidad.
+  Publicación controla cuándo se reserva o libera.
+end note
+
+@enduml
