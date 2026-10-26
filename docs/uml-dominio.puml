@@ -178,4 +178,10 @@ note bottom of AvailabilitySlot
   Publicación controla cuándo se reserva o libera.
 end note
 
+note bottom of Booking
+  BookingStates usa enums sin datos propios: cada estado tiene
+  una sola instancia inmutable. Booking conserva el estado actual,
+  participantes, pagos e historial propios de cada contratación.
+end note
+
 @enduml
