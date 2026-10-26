@@ -8,6 +8,18 @@ public record SkillCoins(int amount) {
         }
     }
 
+    public SkillCoins plus(SkillCoins other) {
+        return new SkillCoins(Math.addExact(amount, java.util.Objects.requireNonNull(other).amount));
+    }
+
+    public SkillCoins minus(SkillCoins other) {
+        int value = java.util.Objects.requireNonNull(other).amount;
+        if (value > amount) {
+            throw new IllegalArgumentException("Saldo insuficiente");
+        }
+        return new SkillCoins(amount - value);
+    }
+
     public static SkillCoins zero() {
         return new SkillCoins(0);
     }
