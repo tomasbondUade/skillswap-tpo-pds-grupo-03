@@ -32,6 +32,11 @@ public final class Publication {
     private LocalDateTime lastRequestedAt;
     private long version;
 
+    /** Inicia la construcción controlada de un borrador de publicación. */
+    public static PublicationBuilder builder(String authorUserId) {
+        return new PublicationBuilder(authorUserId);
+    }
+
     /** Constructor de reconstitución del agregado desde una capa externa. */
     public Publication(String id, String authorUserId, String title, String description, String category,
                        Modality modality, int durationMinutes, int capacity, SkillCoins basePrice,

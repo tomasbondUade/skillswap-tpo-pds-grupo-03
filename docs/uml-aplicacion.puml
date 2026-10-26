@@ -1,0 +1,103 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+package "Presentation" {
+  [UI Controllers] as Presentation
+}
+
+package "Application" {
+  package "Input ports" {
+    interface ProfileUseCases
+    interface PublicationUseCases
+    interface DiscoveryUseCases
+    interface BookingUseCases
+    interface WalletUseCases
+    interface RatingUseCases
+    interface NotificationUseCases
+  }
+  package "Output ports" {
+    interface ProfileRepository
+    interface PublicationRepository
+    interface BookingRepository
+    interface WalletRepository
+    interface RatingRepository
+    interface NotificationRepository
+    interface CurrentUserProvider
+    interface TransactionManager
+    interface DomainEventPublisher
+    interface NotificationGateway
+  }
+  package "Application models" {
+    [Commands and queries]
+    [Read results]
+    [DomainEvent]
+    [NotificationMessage]
+  }
+  [Use case services] as Services
+}
+
+package "Domain" {
+  [Profile]
+  [Publication]
+  [Booking]
+  [Wallet]
+  [Rating]
+  [Policies and strategies]
+}
+
+package "Infrastructure" {
+  [JPA repository adapters]
+  [Identity adapter]
+  [Transaction adapter]
+  [Event and notification adapters]
+}
+
+Presentation --> ProfileUseCases
+Presentation --> PublicationUseCases
+Presentation --> DiscoveryUseCases
+Presentation --> BookingUseCases
+Presentation --> WalletUseCases
+Presentation --> RatingUseCases
+Presentation --> NotificationUseCases
+
+ProfileUseCases <|.. Services
+PublicationUseCases <|.. Services
+DiscoveryUseCases <|.. Services
+BookingUseCases <|.. Services
+WalletUseCases <|.. Services
+RatingUseCases <|.. Services
+NotificationUseCases <|.. Services
+Services --> ProfileRepository
+Services --> PublicationRepository
+Services --> BookingRepository
+Services --> WalletRepository
+Services --> RatingRepository
+Services --> NotificationRepository
+Services --> CurrentUserProvider
+Services --> TransactionManager
+Services --> DomainEventPublisher
+Services --> NotificationGateway
+Services --> Profile
+Services --> Publication
+Services --> Booking
+Services --> Wallet
+Services --> Rating
+
+Infrastructure ..|> ProfileRepository
+Infrastructure ..|> PublicationRepository
+Infrastructure ..|> BookingRepository
+Infrastructure ..|> WalletRepository
+Infrastructure ..|> RatingRepository
+Infrastructure ..|> NotificationRepository
+Infrastructure ..|> CurrentUserProvider
+Infrastructure ..|> TransactionManager
+Infrastructure ..|> DomainEventPublisher
+Infrastructure ..|> NotificationGateway
+
+note bottom of Services
+Concrete services are split by cohesive use-case area.
+The related subissues implement each area's orchestration;
+the domain remains responsible for its invariants.
+end note
+@enduml

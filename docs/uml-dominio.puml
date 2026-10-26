@@ -32,6 +32,29 @@ package "domain.model" {
     + recordBookingRequest(requester, slotId)
   }
 
+  class PublicationBuilder <<Builder>> {
+    - authorUserId: String
+    - title: String
+    - description: String
+    - category: String
+    - modality: Modality
+    - durationMinutes: Integer
+    - capacity: Integer
+    - basePrice: SkillCoins
+    - tags: Set<String>
+    - availability: List<AvailabilitySlot>
+    + title(value): PublicationBuilder
+    + description(value): PublicationBuilder
+    + category(value): PublicationBuilder
+    + modality(value): PublicationBuilder
+    + durationMinutes(value): PublicationBuilder
+    + capacity(value): PublicationBuilder
+    + basePrice(value): PublicationBuilder
+    + tag(value): PublicationBuilder
+    + addAvailability(slot): PublicationBuilder
+    + build(): Publication
+  }
+
   enum PublicationStatus {
     DRAFT
     PUBLISHED
@@ -134,6 +157,8 @@ package "domain.model" {
 
 Profile "1" *-- "0..*" AvailabilitySlot : disponibilidad
 Publication "1" *-- "0..*" AvailabilitySlot : franjas publicables
+PublicationBuilder ..> Publication : construye borrador
+PublicationBuilder ..> AvailabilitySlot : compone disponibilidad
 Publication "1" *-- "0..*" StatusHistoryEntry : historial
 Booking "1" *-- "0..*" StatusHistoryEntry : historial
 Wallet "1" *-- "0..*" LedgerEntry : movimientos
@@ -176,6 +201,12 @@ end note
 note bottom of AvailabilitySlot
   La franja valida el intervalo y la capacidad.
   Publicación controla cuándo se reserva o libera.
+end note
+
+note bottom of Booking
+  BookingStates usa enums sin datos propios: cada estado tiene
+  una sola instancia inmutable. Booking conserva el estado actual,
+  participantes, pagos e historial propios de cada contratación.
 end note
 
 @enduml

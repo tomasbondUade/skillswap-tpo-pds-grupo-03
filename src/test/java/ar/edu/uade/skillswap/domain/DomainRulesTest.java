@@ -15,6 +15,7 @@ import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.model.Wallet;
 import ar.edu.uade.skillswap.domain.policy.FlexibleRefundPolicy;
 import ar.edu.uade.skillswap.domain.policy.StandardRefundPolicy;
+import ar.edu.uade.skillswap.domain.state.BookingStates;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -90,6 +91,21 @@ class DomainRulesTest {
         assertEquals(5, booking.history().size());
         assertThrows(UnsupportedOperationException.class, () -> booking.history().clear());
         assertThrows(IllegalStateException.class, () -> booking.complete("buyer"));
+    }
+
+    @Test
+    void bookingStateSingletonsAreStatelessAndDoNotShareBookingData() {
+        assertSame(BookingStates.pending(), BookingStates.pending());
+
+        Booking first = booking(100);
+        Booking second = booking(200);
+        first.accept("provider");
+
+        assertEquals(BookingStatus.ACCEPTED, first.status());
+        assertEquals(BookingStatus.PENDING, second.status());
+        assertEquals(2, first.history().size());
+        assertEquals(1, second.history().size());
+        assertThrows(UnsupportedOperationException.class, () -> second.history().clear());
     }
 
     @Test
