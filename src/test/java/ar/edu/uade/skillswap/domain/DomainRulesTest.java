@@ -72,9 +72,28 @@ class DomainRulesTest {
         Booking.request(publication, "buyer", "Objetivo", slotId, new SkillCoins(20));
         assertEquals(1, publication.requestCount());
 
+        assertThrows(IllegalArgumentException.class, () -> Booking.request(
+                publication, "another-buyer", "Objetivo", "missing-slot", new SkillCoins(20)));
+
         publication.reserve(slotId);
         assertThrows(IllegalStateException.class, () -> Booking.request(
                 publication, "another-buyer", "Objetivo", slotId, new SkillCoins(20)));
+    }
+
+    @Test
+    void bookingRequestKeepsOptionalClientMessageAndRequiredObjective() {
+        Publication publication = draft("provider", "Java", List.of("Java"));
+        publication.addAvailability("provider", slot(1));
+        publication.publish("provider");
+        String slotId = publication.availability().get(0).id();
+
+        Booking booking = Booking.request(publication, "buyer", "  Necesito prepararme para una entrevista  ",
+                "  Practicar diseño de APIs  ", slotId, new SkillCoins(20));
+
+        assertEquals("Necesito prepararme para una entrevista", booking.clientMessage());
+        assertEquals("Practicar diseño de APIs", booking.objective());
+        assertThrows(IllegalArgumentException.class, () -> Booking.request(
+                publication, "another-buyer", null, " ", slotId, new SkillCoins(20)));
     }
 
     @Test
