@@ -175,6 +175,34 @@ class DomainRulesTest {
     }
 
     @Test
+    void profileRecalculatesReputationAndRejectsDuplicateRatings() {
+        Profile profile = Profile.register("provider", "Mentora", "", "UTC",
+                Set.of("Java"), Set.of("Backend"), List.of());
+        Rating first = Rating.restore("rating-1", "booking-1", "buyer-1", "provider",
+                5, "Muy clara", LocalDateTime.parse("2026-10-01T10:00:00"));
+        Rating second = Rating.restore("rating-2", "booking-2", "buyer-2", "provider",
+                4, "Útil", LocalDateTime.parse("2026-10-02T10:00:00"));
+
+        profile.recalculateReputation(List.of(first, second));
+
+        assertEquals(4.5, profile.reputation());
+        assertEquals(2, profile.ratingCount());
+
+        Rating duplicate = Rating.restore("rating-3", "booking-1", "buyer-1", "provider",
+                1, "Duplicada", LocalDateTime.parse("2026-10-03T10:00:00"));
+        assertThrows(IllegalArgumentException.class,
+                () -> profile.recalculateReputation(List.of(first, duplicate)));
+        assertEquals(4.5, profile.reputation(), "Un cálculo inválido no debe modificar la reputación");
+
+        profile.recalculateReputation(List.of());
+        assertEquals(0.0, profile.reputation());
+        assertEquals(0, profile.ratingCount());
+        assertThrows(IllegalArgumentException.class, () -> profile.recalculateReputation(List.of(
+                Rating.restore("rating-other", "booking-3", "buyer-3", "other-user",
+                        5, "Otra persona", LocalDateTime.now()))));
+    }
+
+    @Test
     void refundStrategiesOfferDifferentRulesForTheSameBooking() {
         Booking booking = booking(200);
         LocalDateTime cancellation = LocalDateTime.parse("2026-10-01T10:00:00");
