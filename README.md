@@ -43,6 +43,12 @@ Se abre la ventana **SkillSwap · Mock UI Kit**. Para cerrarla, cerrá la ventan
 
 El guion detallado está en [`docs/guion-demo.md`](docs/guion-demo.md). Resume cómo crear y publicar un borrador, explorar mentorías, generar una solicitud y avanzar sus estados desde la interfaz actual. También distingue las interacciones simuladas de las que quedan pendientes de integración.
 
+## Diseño y defensa
+
+- [Modelo editable de clases en StarUML](docs/modelo-skill-swap.mdj), con diagramas de Domain y Application.
+- [Informe de decisiones de diseño](docs/informe-diseno.md) y [versión PDF](output/pdf/informe-diseno-skillswap.pdf).
+- [Auditoría de patrones, GRASP y SOLID](docs/auditoria-patrones-y-grasp.md), con estado verificado en `main` y pendientes de integración.
+
 ## Estructura principal
 
 ```text
