@@ -133,12 +133,23 @@ public final class Profile {
 
     public void deactivate(String actor) {
         requireActiveOwner(actor);
+        // La baja solo cambia el estado del perfil; las contrataciones tienen su propio ciclo de vida.
         active = false;
     }
 
+    public void activate(String actor) {
+        requireOwner(actor);
+        if (active) throw new IllegalStateException("El perfil ya está activo");
+        active = true;
+    }
+
     private void requireActiveOwner(String actor) {
-        if (!userId.equals(actor)) throw new SecurityException("Solo el titular puede modificar su perfil");
+        requireOwner(actor);
         if (!active) throw new IllegalStateException("El perfil está dado de baja");
+    }
+
+    private void requireOwner(String actor) {
+        if (!userId.equals(actor)) throw new SecurityException("Solo el titular puede modificar su perfil");
     }
 
     private static Set<String> normalizedValues(Collection<String> values, String label) {

@@ -9,5 +9,6 @@ public interface ProfileUseCases {
     ProfileView register(RegisterCommand command);
     ProfileView update(UpdateCommand command);
     ProfileView viewMyProfile();
+    void activateMyProfile();
     void deactivateMyProfile();
 }

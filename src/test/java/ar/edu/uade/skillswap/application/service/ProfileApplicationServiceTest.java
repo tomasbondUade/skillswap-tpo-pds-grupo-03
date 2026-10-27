@@ -66,6 +66,9 @@ class ProfileApplicationServiceTest {
         var error = assertThrows(ApplicationException.class, () -> service.update(
                 new UpdateCommand("Ana", "", "UTC", java.util.List.of(), java.util.List.of())));
         assertEquals(ApplicationErrorCode.INVALID_STATE, error.code());
+
+        service.activateMyProfile();
+        assertTrue(service.viewMyProfile().active());
     }
 
     private static final class InMemoryProfiles implements ProfileRepository {
