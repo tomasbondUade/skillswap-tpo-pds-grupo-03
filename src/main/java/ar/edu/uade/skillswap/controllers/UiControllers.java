@@ -42,6 +42,16 @@ public interface UiControllers {
         boolean puedeAvanzar(String userId, String contratacionId);
     }
 
+    interface CalificacionController {
+        Calificacion calificar(String userId, String contratacionId, int puntaje, String comentario);
+    }
+
+    /** Sólo para intercambiar identidades en la demostración local. */
+    interface SesionDemoController {
+        String usuarioActual();
+        void cambiarUsuario(String userId);
+    }
+
     interface WalletController {
         int consultarSaldo(String userId);
         List<Movimiento> listarMovimientos(String userId);
@@ -62,6 +72,8 @@ public interface UiControllers {
     BusquedaController busqueda();
     PublicacionController publicaciones();
     ContratacionController contrataciones();
+    CalificacionController calificaciones();
+    default SesionDemoController sesionDemo() { return null; }
     WalletController wallet();
     NotificacionController notificaciones();
     PerfilController perfiles();
