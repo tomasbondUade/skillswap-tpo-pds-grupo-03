@@ -161,10 +161,10 @@ public final class SkillSwapView extends JPanel {
 
     private void showContracts() {
         JPanel p = base();
-        addSection(p, "Tus contrataciones", "Avanzá el flujo para probar los estados del sistema");
+        addSection(p, "Tus contrataciones", "Los cambios de estado requieren autorización del participante correspondiente");
         for (Contratacion booking : controllers.contrataciones().listarContrataciones(USER_ID)) {
             JPanel row = card(new BorderLayout(16, 0));
-            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170));
             JPanel text = new JPanel();
             text.setOpaque(false);
             text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
@@ -179,13 +179,20 @@ public final class SkillSwapView extends JPanel {
 
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
             actions.setOpaque(false);
-            if (booking.estado() != EstadoContratacion.COMPLETADA && booking.estado() != EstadoContratacion.CANCELADA) {
-                JButton next = button("Avanzar estado", true);
-                next.addActionListener(event -> {
-                    controllers.contrataciones().avanzar(USER_ID, booking.id());
-                    showContracts();
-                });
-                actions.add(next);
+            boolean terminal = booking.estado() == EstadoContratacion.COMPLETADA
+                    || booking.estado() == EstadoContratacion.CANCELADA
+                    || booking.estado() == EstadoContratacion.RECHAZADA;
+            if (!terminal) {
+                if (controllers.contrataciones().puedeAvanzar(USER_ID, booking.id())) {
+                    JButton next = button("Avanzar estado", true);
+                    next.addActionListener(event -> {
+                        controllers.contrataciones().avanzar(USER_ID, booking.id());
+                        showContracts();
+                    });
+                    actions.add(next);
+                } else if (booking.estado() == EstadoContratacion.PENDIENTE) {
+                    actions.add(label("Esperando al mentor", SMALL, MUTED));
+                }
                 JButton cancel = button("Cancelar", false);
                 cancel.addActionListener(event -> {
                     controllers.contrataciones().cancelar(USER_ID, booking.id());

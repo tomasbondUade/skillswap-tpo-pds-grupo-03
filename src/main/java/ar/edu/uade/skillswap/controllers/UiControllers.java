@@ -23,6 +23,7 @@ public interface UiControllers {
                                String objetivo, String franjaId);
         Contratacion avanzar(String userId, String contratacionId);
         Contratacion cancelar(String userId, String contratacionId);
+        default boolean puedeAvanzar(String userId, String contratacionId) { return true; }
     }
 
     interface WalletController {

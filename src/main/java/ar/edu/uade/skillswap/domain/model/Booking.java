@@ -109,8 +109,13 @@ public final class Booking {
     }
 
     public void accept(String actor) {
-        requireActor(actor, providerUserId);
+        assertCanAccept(actor);
         transition(state.accept(this), actor, "Solicitud aceptada");
+    }
+
+    public void assertCanAccept(String actor) {
+        requireActor(actor, providerUserId);
+        state.accept(this);
     }
 
     public void reject(String actor, String reason) {
@@ -131,6 +136,7 @@ public final class Booking {
 
     public void start(String actor) {
         requireParticipant(actor);
+        if (proposedSlotId != null) throw new IllegalStateException("No se puede iniciar con una reprogramación pendiente");
         transition(state.start(this), actor, "Sesión iniciada");
     }
 
@@ -151,6 +157,13 @@ public final class Booking {
     }
 
     public void proposeReschedule(String actor, String newSlotId) {
+        assertCanProposeReschedule(actor, newSlotId);
+        proposedSlotId = required(newSlotId, "Debe indicar la nueva franja");
+        buyerAcceptedReschedule = actor.equals(buyerUserId);
+        providerAcceptedReschedule = actor.equals(providerUserId);
+    }
+
+    public void assertCanProposeReschedule(String actor, String newSlotId) {
         requireParticipant(actor);
         if (state.status() != BookingStatus.ACCEPTED && state.status() != BookingStatus.CONFIRMED) {
             throw new IllegalStateException("Solo se puede reprogramar antes de comenzar");
@@ -160,15 +173,11 @@ public final class Booking {
         if (proposedSlotId != null && !proposedSlotId.equals(requestedSlot)) {
             throw new IllegalStateException("Ya existe una propuesta de reprogramación pendiente");
         }
-        proposedSlotId = requestedSlot;
-        buyerAcceptedReschedule = actor.equals(buyerUserId);
-        providerAcceptedReschedule = actor.equals(providerUserId);
     }
 
     /** Confirma la propuesta cuando el otro participante también la acepta. */
     public boolean acceptReschedule(String actor) {
-        requireParticipant(actor);
-        if (proposedSlotId == null) throw new IllegalStateException("No hay una reprogramación propuesta");
+        assertCanAcceptReschedule(actor);
         if (actor.equals(buyerUserId)) buyerAcceptedReschedule = true;
         else providerAcceptedReschedule = true;
         if (!buyerAcceptedReschedule || !providerAcceptedReschedule) return false;
@@ -178,6 +187,19 @@ public final class Booking {
         buyerAcceptedReschedule = false;
         providerAcceptedReschedule = false;
         return true;
+    }
+
+    public void assertCanAcceptReschedule(String actor) {
+        requireParticipant(actor);
+        if (state.status() != BookingStatus.ACCEPTED && state.status() != BookingStatus.CONFIRMED) {
+            throw new IllegalStateException("Solo se puede aceptar una reprogramación antes de comenzar");
+        }
+        if (proposedSlotId == null) throw new IllegalStateException("No hay una reprogramación propuesta");
+    }
+
+    public boolean rescheduleWillBeAcceptedBy(String actor) {
+        assertCanAcceptReschedule(actor);
+        return actor.equals(buyerUserId) ? providerAcceptedReschedule : buyerAcceptedReschedule;
     }
 
     private void transition(BookingState next, String actor, String reason) {

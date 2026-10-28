@@ -1,8 +1,8 @@
-# Guion de demo: SkillSwap Mock UI Kit
+# Guion de demo: SkillSwap
 
 ## Objetivo
 
-Mostrar la experiencia de navegación y el flujo de publicaciones y contrataciones disponible en la versión actual. La app usa un usuario de demostración, `Mateo Silva`, y datos en memoria.
+Mostrar la experiencia Swing conectada a casos de uso de Application para perfiles, publicaciones, búsqueda, contrataciones, billetera y notificaciones. La app usa un usuario de demostración, `Mateo Silva`, y repositorios en memoria.
 
 ## Preparación
 
@@ -19,19 +19,20 @@ La primera orden valida compilación y pruebas; la segunda abre la ventana Swing
 
 1. **Inicio y recomendaciones.** Mostrar el inicio, las recomendaciones y las categorías.
 2. **Explorar una mentoría.** Abrir **Explorar**, filtrar por texto/categoría/orden y entrar en el detalle de una publicación.
-3. **Solicitar.** Presionar **Solicitar mentoría**. La solicitud aparece en **Contrataciones** con estado `PENDIENTE`.
-4. **Avanzar la contratación.** En **Contrataciones**, presionar **Avanzar estado** para recorrer `PENDIENTE → ACEPTADA → CONFIRMADA → EN_CURSO → COMPLETADA`. La acción avanza un estado por vez.
-5. **Mostrar publicaciones propias.** Abrir **Mis publicaciones**, crear un borrador con título, descripción y categoría, y presionar **Publicar** para cambiar su estado en el mock.
-6. **Mostrar billetera y notificaciones.** Abrir **SkillCoins** para ver saldo y movimientos de ejemplo; se puede usar **Acreditar demo**. En **Notificaciones**, marcar una notificación o todas como leídas.
+3. **Solicitar.** Presionar **Solicitar mentoría**. La solicitud real de aplicación aparece en **Contrataciones** como `PENDIENTE`; se puede cancelar como comprador.
+4. **Gestionar una contratación.** Las acciones de transición aparecen según el participante autenticado. Mateo no puede aceptar solicitudes dirigidas a otros mentores; la demo no ofrece cambio de sesión para esos proveedores.
+5. **Publicar.** Abrir **Mis publicaciones**, crear un borrador con título, descripción y categoría, y presionar **Publicar**. El controller agrega una franja demo válida y la publicación pasa a estar disponible en búsqueda.
+6. **Billetera y notificaciones.** **SkillCoins** consulta saldo y ledger; **Acreditar demo** registra un movimiento en el agregado Wallet. **Notificaciones** permite marcar una o todas como leídas.
 7. **Mostrar el perfil.** La pantalla de perfil presenta habilidades y reputación de ejemplo.
 
 ## Límites de esta demo
 
-Esta versión verifica la navegación y las respuestas del Mock UI Kit, no un recorrido integrado de extremo a extremo:
+La demo integra los servicios y reglas disponibles, pero todavía no es una entrega de producción:
 
-- Las solicitudes de la interfaz usan un objetivo fijo y no permiten elegir una franja ni escribir un mensaje propio.
-- **Avanzar estado** simula aceptación, confirmación de pago, inicio y finalización con una acción genérica. No debita SkillCoins ni ejecuta una transacción real.
-- La pantalla no permite crear una calificación; muestra una reputación y reseñas precargadas.
-- Las publicaciones del mock no editan disponibilidad y se pierden al reiniciar la aplicación.
+- Las solicitudes usan un objetivo fijo y el primer horario disponible; no permiten elegir franja ni escribir un mensaje propio.
+- El pago debita SkillCoins y los mueve a una wallet de custodia; la finalización libera el saldo al proveedor y la cancelación pagada aplica `StandardRefundPolicy`, devuelve la parte correspondiente al cliente y liquida el remanente al proveedor. Son saldos ficticios y no existe pasarela de pago.
+- El usuario autenticado es fijo (`user-mateo`), por lo que la interfaz no puede operar como proveedor en contrataciones de otros usuarios.
+- `SynchronousTransactionManager` no aporta rollback ni bloqueo; el estado se pierde al reiniciar.
+- La pantalla no permite crear una calificación; la reputación y las reseñas siguen siendo de demostración.
 
-Al defender el TP, presentar estos puntos como límites del scaffold actual. El recorrido final esperado del sistema integrado es **publicar → solicitar → aceptar → pagar → completar → calificar**, coordinado por los casos de uso y las capas de persistencia y presentación.
+La persistencia JPA/MySQL, migraciones y garantías de rollback/concurrencia de producción siguen pendientes. Los eventos Observer y la bandeja in-app están integrados en memoria; no hay proveedor externo ni cambio de sesión para recorrer el flujo completo con dos usuarios desde la UI.
