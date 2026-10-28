@@ -10,7 +10,8 @@ import java.util.stream.Collectors;
 public final class MockSkillSwapControllers implements UiControllers,
         UiControllers.BusquedaController, UiControllers.PublicacionController,
         UiControllers.ContratacionController, UiControllers.WalletController,
-        UiControllers.NotificacionController, UiControllers.PerfilController {
+        UiControllers.NotificacionController, UiControllers.PerfilController,
+        UiControllers.CalificacionController {
 
     private final List<Publicacion> publicaciones = new ArrayList<>();
     private final List<Contratacion> contrataciones = new ArrayList<>();
@@ -59,6 +60,12 @@ public final class MockSkillSwapControllers implements UiControllers,
     @Override public WalletController wallet() { return this; }
     @Override public NotificacionController notificaciones() { return this; }
     @Override public PerfilController perfiles() { return this; }
+    @Override public CalificacionController calificaciones() { return this; }
+    @Override public Calificacion calificar(String userId, String id, int score, String comment) {
+        if (score < 1 || score > 5) throw new IllegalArgumentException("Puntaje fuera de rango");
+        if (findContract(id).estado() != EstadoContratacion.COMPLETADA) throw new IllegalStateException("La contratación no terminó");
+        return new Calificacion(UUID.randomUUID().toString(), id, score, comment, LocalDateTime.now());
+    }
 
     @Override public List<Publicacion> buscar(FiltrosBusqueda f) {
         String text = f.texto() == null ? "" : f.texto().toLowerCase(Locale.ROOT).trim();
