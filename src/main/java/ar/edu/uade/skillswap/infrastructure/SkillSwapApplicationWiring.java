@@ -43,7 +43,7 @@ public final class SkillSwapApplicationWiring {
     private final RatingRepository ratings = new InMemoryRatingRepository();
     private final ProfileRepository profiles = new InMemoryProfileRepository();
     private final PublicationRepository publications = new InMemoryPublicationRepository();
-    private final CurrentUserProvider currentUser = new StaticCurrentUserProvider("user-mateo");
+    private final CurrentUserProvider currentUser = new DemoCurrentUserProvider();
     private final TransactionManager transactions = new SynchronousTransactionManager();
     private final RecommendationStrategy recommendationStrategy = new SkillAffinityStrategy();
     private final RefundPolicy refundPolicy = new StandardRefundPolicy();
