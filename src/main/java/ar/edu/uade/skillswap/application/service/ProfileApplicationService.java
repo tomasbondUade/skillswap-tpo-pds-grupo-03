@@ -64,6 +64,17 @@ public final class ProfileApplicationService implements ProfileUseCases {
     }
 
     @Override
+    public void activateMyProfile() {
+        String actor = UseCaseSupport.currentUserId(currentUser);
+        transactions.required(() -> UseCaseSupport.translateDomainFailures(() -> {
+            Profile profile = profiles.findByUserIdForUpdate(actor)
+                    .orElseThrow(() -> notFound("No existe un perfil para el usuario autenticado"));
+            profile.activate(actor);
+            profiles.save(profile);
+        }));
+    }
+
+    @Override
     public void deactivateMyProfile() {
         String actor = UseCaseSupport.currentUserId(currentUser);
         transactions.required(() -> UseCaseSupport.translateDomainFailures(() -> {

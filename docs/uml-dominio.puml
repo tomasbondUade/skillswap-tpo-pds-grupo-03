@@ -12,6 +12,7 @@ package "domain.model" {
     + updateDetails(actor, ...)
     + updateAvailability(actor, slots)
     + recalculateReputation(ratings)
+    + activate(actor)
     + deactivate(actor)
   }
 
@@ -201,6 +202,11 @@ end note
 note bottom of AvailabilitySlot
   La franja valida el intervalo y la capacidad.
   Publicación controla cuándo se reserva o libera.
+end note
+
+note right of Profile
+  Activar y dar de baja solo cambia el estado lógico del perfil.
+  Las contrataciones mantienen su estado e historial propios.
 end note
 
 note bottom of Booking
