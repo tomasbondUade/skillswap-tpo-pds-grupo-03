@@ -7,14 +7,26 @@ import java.time.LocalDateTime;
 public final class BookingData {
     private BookingData() {}
 
-    public record RequestCommand(String publicationId, String objective, String slotId) {}
+    public record RequestCommand(String publicationId, String clientMessage, String objective, String slotId) {
+        public RequestCommand(String publicationId, String objective, String slotId) {
+            this(publicationId, "", objective, slotId);
+        }
+    }
     public record BookingCommand(String bookingId) {}
     public record RejectCommand(String bookingId, String reason) {}
     public record CancelCommand(String bookingId, String reason) {}
     public record RescheduleCommand(String bookingId, String newSlotId) {}
 
     public record BookingView(String id, String publicationId, String buyerUserId,
-                              String providerUserId, String objective, String slotId,
+                              String providerUserId, String objective, String clientMessage, String slotId,
                               int priceInSkillCoins, int refundInSkillCoins,
-                              BookingStatus status, LocalDateTime createdAt, LocalDateTime paidAt) {}
+                              BookingStatus status, LocalDateTime createdAt, LocalDateTime paidAt) {
+        public BookingView(String id, String publicationId, String buyerUserId,
+                           String providerUserId, String objective, String slotId,
+                           int priceInSkillCoins, int refundInSkillCoins, BookingStatus status,
+                           LocalDateTime createdAt, LocalDateTime paidAt) {
+            this(id, publicationId, buyerUserId, providerUserId, objective, "", slotId,
+                    priceInSkillCoins, refundInSkillCoins, status, createdAt, paidAt);
+        }
+    }
 }
