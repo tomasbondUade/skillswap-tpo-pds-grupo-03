@@ -39,6 +39,8 @@ class RatingApplicationServiceTest {
         assertEquals(5.0, fixture.profiles.get("provider").reputation());
         assertEquals(1, fixture.profiles.get("provider").ratingCount());
         assertEquals(1, fixture.transactions.operations);
+        assertEquals("rating.submitted", fixture.events.get(0).name());
+        assertEquals("provider", fixture.events.get(0).attributes().get("subjectUserId"));
     }
 
     @Test
@@ -51,6 +53,7 @@ class RatingApplicationServiceTest {
 
         assertEquals(ApplicationErrorCode.CONFLICT, error.code());
         assertEquals(1, fixture.records.size());
+        assertEquals(1, fixture.events.size());
         assertEquals(5.0, fixture.profiles.get("provider").reputation());
     }
 
@@ -76,6 +79,7 @@ class RatingApplicationServiceTest {
         private final List<Rating> records = new ArrayList<>();
         private final RatingStore ratings = new RatingStore();
         private final ImmediateTransactionManager transactions = new ImmediateTransactionManager();
+        private final List<ar.edu.uade.skillswap.application.event.DomainEvent> events = new ArrayList<>();
         private String actor = "buyer";
         private final RatingApplicationService service;
 
@@ -96,7 +100,7 @@ class RatingApplicationServiceTest {
                 @Override public Booking save(Booking value) { return value; }
             };
             service = new RatingApplicationService(bookingStore, ratings, profileStore,
-                    () -> actor, transactions);
+                    () -> actor, transactions, events::add);
         }
 
         private Profile profile(String userId) {

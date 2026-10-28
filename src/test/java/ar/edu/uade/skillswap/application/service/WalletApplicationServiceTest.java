@@ -3,8 +3,10 @@ package ar.edu.uade.skillswap.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import ar.edu.uade.skillswap.application.port.out.WalletRepository;
+import ar.edu.uade.skillswap.application.port.out.TransactionManager;
 import ar.edu.uade.skillswap.domain.model.Wallet;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 class WalletApplicationServiceTest {
@@ -18,7 +20,9 @@ class WalletApplicationServiceTest {
             }
             @Override public Optional<Wallet> findByUserIdForUpdate(String userId) { return findByUserId(userId); }
             @Override public Wallet save(Wallet value) { return value; }
-        }, () -> "user-1");
+        }, () -> "user-1", new TransactionManager() {
+            @Override public <T> T required(Supplier<T> work) { return work.get(); }
+        });
 
         var view = service.viewMyWallet();
 

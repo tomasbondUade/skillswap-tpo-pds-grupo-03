@@ -4,9 +4,9 @@ SkillSwap es un marketplace académico para ofrecer y contratar mentorías. Este
 
 ## Estado actual
 
-La aplicación ejecutable es un Mock UI Kit de escritorio en Java Swing. La presentación consume interfaces de controller y, en esta versión, `MockSkillSwapControllers` responde con datos en memoria. El modelo de dominio contiene reglas para perfiles, publicaciones, contrataciones, billeteras, calificaciones y sus estados.
+La aplicación ejecutable es una demo de escritorio en Java Swing. La vista usa controllers que conectan perfiles, publicaciones, búsqueda, contrataciones, billetera y notificaciones con servicios de Application y repositorios en memoria. `MockSkillSwapControllers` permanece disponible para pruebas y recorridos aislados.
 
-La interfaz de demostración no persiste datos y no requiere una base MySQL configurada. Al cerrar y volver a abrir la aplicación, los datos de prueba vuelven a su estado inicial. La integración completa entre Presentation, Application e Infrastructure se realiza en los issues de implementación del equipo.
+La demo no persiste datos y no requiere una base MySQL configurada. Al cerrar y volver a abrir la aplicación, los datos vuelven a su estado inicial. Los cambios de saldo y las transiciones solo representan SkillCoins ficticios; no hay pasarela de pago ni garantías de transacción/concurrencia de producción.
 
 ## Requisitos
 
@@ -14,7 +14,7 @@ La interfaz de demostración no persiste datos y no requiere una base MySQL conf
 - Apache Maven 3.9 o superior.
 - Git.
 
-No se necesitan variables de entorno ni credenciales para ejecutar el Mock UI Kit.
+No se necesitan variables de entorno ni credenciales para ejecutar la demo.
 
 ## Obtener el proyecto
 
@@ -41,7 +41,7 @@ Se abre la ventana **SkillSwap · Mock UI Kit**. Para cerrarla, cerrá la ventan
 
 ## Recorrido de demostración
 
-El guion detallado está en [`docs/guion-demo.md`](docs/guion-demo.md). Resume cómo crear y publicar un borrador, explorar mentorías, generar una solicitud y avanzar sus estados desde la interfaz actual. También distingue las interacciones simuladas de las que quedan pendientes de integración.
+El guion detallado está en [`docs/guion-demo.md`](docs/guion-demo.md). Describe los flujos conectados y las limitaciones que siguen pendientes, incluida la identidad fija de demo y la ausencia de persistencia real.
 
 ## Diseño y defensa
 
@@ -55,12 +55,14 @@ El guion detallado está en [`docs/guion-demo.md`](docs/guion-demo.md). Resume c
 src/main/java/ar/edu/uade/skillswap/
 ├── controllers/  # Contratos que consume la vista
 ├── domain/       # Modelo y reglas del dominio
-├── mock/         # Implementación en memoria para la demo
+├── application/  # Casos de uso, modelos y puertos
+├── infrastructure/ # Repositorios y wiring en memoria
+├── mock/         # Controller alternativo para pruebas de UI
 ├── model/        # Modelos usados por el Mock UI Kit
 └── ui/           # Interfaz Java Swing
 ```
 
-El `pom.xml` declara Hibernate, MySQL y Flyway como dependencias previstas para la integración. La aplicación de demostración actual usa el mock y no accede a esos servicios.
+El `pom.xml` declara Hibernate, MySQL y Flyway, pero todavía no hay adaptadores JPA, migraciones ni conexiones a esos servicios. La aplicación usa exclusivamente repositorios en memoria.
 
 ## Flujo de trabajo
 
