@@ -11,9 +11,50 @@ import ar.edu.uade.skillswap.domain.model.BookingStatus;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
 import ar.edu.uade.skillswap.model.Models;
+import ar.edu.uade.skillswap.application.model.ProfileData.AvailabilityInput;
+import ar.edu.uade.skillswap.application.model.ProfileData.RegisterCommand;
+import ar.edu.uade.skillswap.application.model.PublicationData.CreateDraftCommand;
+import ar.edu.uade.skillswap.application.model.PublicationData.EditDraftCommand;
+import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Converts application results to the simple data models used by the Swing UI. */
 public final class UiModelMapper {
+    public RegisterCommand toRegisterCommand(Models.NuevoPerfil datos) {
+        if (datos == null) throw new IllegalArgumentException("Faltan los datos del perfil");
+        return new RegisterCommand(datos.nombre(), datos.bio(), datos.zonaHoraria(),
+                datos.habilidades(), datos.intereses(), datos.canales().stream()
+                    .map(this::toNotificationChannel).collect(Collectors.toSet()),
+                datos.disponibilidad().stream().map(this::toAvailabilityInput).toList());
+    }
+
+    public CreateDraftCommand toCreateDraftCommand(Models.DatosBorrador datos) {
+        if (datos == null) throw new IllegalArgumentException("Faltan los datos del borrador");
+        return new CreateDraftCommand(datos.titulo(), datos.descripcion(), datos.categoria(),
+                toModality(datos.modalidad()), datos.duracionMinutos(), datos.cupos(), datos.precio(),
+                Set.copyOf(datos.etiquetas()),
+                datos.disponibilidad().stream().map(this::toAvailabilityInput).toList());
+    }
+
+    public EditDraftCommand toEditDraftCommand(String publicacionId, Models.EdicionBorrador datos) {
+        if (datos == null) throw new IllegalArgumentException("Faltan los datos para editar el borrador");
+        return new EditDraftCommand(publicacionId, datos.titulo(), datos.descripcion(), datos.categoria(),
+                toModality(datos.modalidad()), datos.duracionMinutos(), datos.cupos(), Set.copyOf(datos.etiquetas()));
+    }
+
+    private AvailabilityInput toAvailabilityInput(Models.Disponibilidad slot) {
+        return new AvailabilityInput(slot.id(), slot.inicio(), slot.fin(), slot.cupos());
+    }
+
+    private NotificationChannelType toNotificationChannel(Models.CanalNotificacion canal) {
+        return switch (canal) {
+            case EMAIL -> NotificationChannelType.EMAIL;
+            case PUSH -> NotificationChannelType.PUSH;
+            case IN_APP -> NotificationChannelType.IN_APP;
+        };
+    }
+
     public SearchQuery toSearchQuery(Models.FiltrosBusqueda filtros) {
         if (filtros == null) throw new IllegalArgumentException("Faltan los filtros de búsqueda");
         return new SearchQuery(filtros.texto(),

@@ -3,6 +3,7 @@ package ar.edu.uade.skillswap.model;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public final class Models {
     private Models() {}
@@ -10,6 +11,37 @@ public final class Models {
     public enum Modalidad { REMOTA, PRESENCIAL, HIBRIDA }
     public enum EstadoPublicacion { BORRADOR, PUBLICADA, PAUSADA, CERRADA, CANCELADA }
     public enum EstadoContratacion { PENDIENTE, ACEPTADA, CONFIRMADA, EN_CURSO, COMPLETADA, RECHAZADA, CANCELADA }
+    public enum CanalNotificacion { EMAIL, PUSH, IN_APP }
+
+    public record Disponibilidad(String id, LocalDateTime inicio, LocalDateTime fin, int cupos) {}
+
+    public record NuevoPerfil(String nombre, String bio, String zonaHoraria,
+                              List<String> habilidades, List<String> intereses,
+                              Set<CanalNotificacion> canales, List<Disponibilidad> disponibilidad) {
+        public NuevoPerfil {
+            habilidades = List.copyOf(habilidades == null ? List.of() : habilidades);
+            intereses = List.copyOf(intereses == null ? List.of() : intereses);
+            canales = Set.copyOf(canales == null ? Set.of() : canales);
+            disponibilidad = List.copyOf(disponibilidad == null ? List.of() : disponibilidad);
+        }
+    }
+
+    public record DatosBorrador(String titulo, String descripcion, String categoria,
+                                Modalidad modalidad, int duracionMinutos, int cupos, int precio,
+                                List<String> etiquetas, List<Disponibilidad> disponibilidad) {
+        public DatosBorrador {
+            etiquetas = List.copyOf(etiquetas == null ? List.of() : etiquetas);
+            disponibilidad = List.copyOf(disponibilidad == null ? List.of() : disponibilidad);
+        }
+    }
+
+    public record EdicionBorrador(String titulo, String descripcion, String categoria,
+                                 Modalidad modalidad, int duracionMinutos, int cupos,
+                                 List<String> etiquetas) {
+        public EdicionBorrador {
+            etiquetas = List.copyOf(etiquetas == null ? List.of() : etiquetas);
+        }
+    }
 
     public enum CodigoError {
         VALIDACION, NO_AUTENTICADO, NO_ENCONTRADO, PERMISOS, ESTADO,

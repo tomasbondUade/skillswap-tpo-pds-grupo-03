@@ -166,6 +166,10 @@ public final class SkillSwapApplicationWiring {
         publications.save(publication);
     }
 
+    public CurrentUserProvider currentUserProvider() {
+        return currentUser;
+    }
+
     public ProfileApplicationService profileService() {
         return profileService;
     }
