@@ -13,7 +13,7 @@ import java.util.List;
 import static ar.edu.uade.skillswap.ui.Theme.*;
 
 public final class SkillSwapView extends JPanel {
-    private static final String USER_ID="user-mateo";
+    private String USER_ID="user-mateo";
     private final UiControllers controllers;
     private final UiActionHandler actions = new UiActionHandler(error ->
             JOptionPane.showMessageDialog(this, error.mensaje(),
@@ -29,11 +29,22 @@ public final class SkillSwapView extends JPanel {
         });
     }
 
+    private void switchDemoUser() {
+        if (controllers.sesionDemo() == null) return;
+        String[] options = {"user-mateo", "mentor-ana", "mentor-lu"};
+        String selected = (String) JOptionPane.showInputDialog(this, "Usuario de demostración",
+                "Cambiar identidad", JOptionPane.QUESTION_MESSAGE, null, options, USER_ID);
+        if (selected == null) return;
+        controllers.sesionDemo().cambiarUsuario(selected);
+        USER_ID = selected;
+        showHome();
+    }
+
     private JComponent sidebar() {
         JPanel side=new JPanel(); side.setBackground(NAVY); side.setPreferredSize(new Dimension(228,720)); side.setLayout(new BoxLayout(side,BoxLayout.Y_AXIS)); side.setBorder(new EmptyBorder(24,16,18,16));
         JLabel logo=label("SkillSwap",new Font("SansSerif",Font.BOLD,25),Color.WHITE); logo.setAlignmentX(LEFT_ALIGNMENT); side.add(logo);
         JLabel sub=label("Aprendé. Compartí. Crecé.",SMALL,new Color(177,200,216)); sub.setAlignmentX(LEFT_ALIGNMENT); side.add(sub); side.add(Box.createVerticalStrut(28));
-        side.add(nav("⌂  Inicio",this::showHome)); side.add(nav("⌕  Explorar",this::showExplore)); side.add(nav("▣  Mis publicaciones",this::showListings)); side.add(nav("✓  Contrataciones",this::showContracts)); side.add(nav("◈  SkillCoins",this::showWallet)); side.add(nav("●  Notificaciones",this::showNotifications)); side.add(nav("♙  Mi perfil",this::showProfile)); side.add(Box.createVerticalGlue());
+        side.add(nav("⌂  Inicio",this::showHome)); side.add(nav("⌕  Explorar",this::showExplore)); side.add(nav("▣  Mis publicaciones",this::showListings)); side.add(nav("✓  Contrataciones",this::showContracts)); side.add(nav("◈  SkillCoins",this::showWallet)); side.add(nav("●  Notificaciones",this::showNotifications)); side.add(nav("♙  Mi perfil",this::showProfile));side.add(nav("⇄  Cambiar usuario demo",this::switchDemoUser)); side.add(Box.createVerticalGlue());
         JPanel user=new JPanel(new BorderLayout(10,0)); user.setOpaque(false); user.setBorder(new EmptyBorder(8,6,4,4)); user.setMaximumSize(new Dimension(Integer.MAX_VALUE,56)); user.setAlignmentX(LEFT_ALIGNMENT);
         JLabel avatar=avatar("MS",36); user.add(avatar,BorderLayout.WEST); JPanel txt=new JPanel();txt.setOpaque(false);txt.setLayout(new BoxLayout(txt,BoxLayout.Y_AXIS));txt.add(label("Mateo Silva",H3,Color.WHITE));txt.add(label("Software Engineer",SMALL,new Color(177,200,216)));user.add(txt);side.add(user); return side;
     }
@@ -206,11 +217,31 @@ public final class SkillSwapView extends JPanel {
                 }));
                 actions.add(cancel);
             }
+            if (booking.estado() == EstadoContratacion.COMPLETADA) {
+                JButton rate = button("Calificar", true);
+                rate.addActionListener(uiAction(event -> showRating(booking)));
+                actions.add(rate);
+            }
             row.add(actions, BorderLayout.EAST);
             p.add(row);
             p.add(Box.createVerticalStrut(11));
         }
         page("Contrataciones", p);
+    }
+
+    private void showRating(Contratacion booking) {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 8, 8));
+        JComboBox<Integer> score = new JComboBox<>(new Integer[]{5, 4, 3, 2, 1});
+        JTextField comment = new JTextField();
+        panel.add(label("Puntaje", H3, TEXT));
+        panel.add(score);
+        panel.add(label("Comentario", H3, TEXT));
+        panel.add(comment);
+        if (JOptionPane.showConfirmDialog(this, panel, "Calificar sesión",
+                JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
+        controllers.calificaciones().calificar(USER_ID, booking.id(), (Integer) score.getSelectedItem(), comment.getText());
+        JOptionPane.showMessageDialog(this, "Calificación registrada");
+        showContracts();
     }
 
     private void showWallet(){JPanel p=base();JPanel balance=new Theme.RoundedPanel(22,NAVY_2);balance.setLayout(new BorderLayout());balance.setBorder(new EmptyBorder(24,26,24,26));balance.setMaximumSize(new Dimension(Integer.MAX_VALUE,120));JPanel btxt=new JPanel();btxt.setOpaque(false);btxt.setLayout(new BoxLayout(btxt,BoxLayout.Y_AXIS));btxt.add(label("SALDO DISPONIBLE",SMALL,new Color(184,209,222)));btxt.add(label(controllers.wallet().consultarSaldo(USER_ID)+" SkillCoins",new Font("SansSerif",Font.BOLD,30),Color.WHITE));balance.add(btxt);JButton add=button("+ Acreditar demo",true);add.addActionListener(uiAction(e->{controllers.wallet().acreditarDemo(USER_ID,500);showWallet();}));balance.add(add,BorderLayout.EAST);balance.setAlignmentX(LEFT_ALIGNMENT);p.add(balance);p.add(Box.createVerticalStrut(24));addSection(p,"Movimientos recientes",null);for(Movimiento m:controllers.wallet().listarMovimientos(USER_ID)){JPanel row=card(new BorderLayout());row.setMaximumSize(new Dimension(Integer.MAX_VALUE,72));JPanel t=new JPanel();t.setOpaque(false);t.setLayout(new BoxLayout(t,BoxLayout.Y_AXIS));t.add(label(m.concepto(),H3,TEXT));t.add(label(m.fecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy · HH:mm")),SMALL,MUTED));row.add(t);row.add(label((m.importe()>0?"+":"")+m.importe()+" ◈",H3,m.importe()>0?TEAL:DANGER),BorderLayout.EAST);p.add(row);p.add(Box.createVerticalStrut(8));}page("SkillCoins",p);}
