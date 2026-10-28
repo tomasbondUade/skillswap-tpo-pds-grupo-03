@@ -2,25 +2,25 @@ package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.application.event.DomainEvent;
 import ar.edu.uade.skillswap.application.model.NotificationMessage;
-import ar.edu.uade.skillswap.application.port.out.NotificationGateway;
+import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
+import ar.edu.uade.skillswap.infrastructure.notification.NotificationFactory;
 
 import java.util.List;
+import java.util.Objects;
 
 public final class NotificationEventObserver {
-    private final NotificationGateway gateway;
+    private final ProfileRepository profiles;
+    private final NotificationFactory factory;
 
-    public NotificationEventObserver(NotificationGateway gateway) {
-        this.gateway = gateway;
+    public NotificationEventObserver(ProfileRepository profiles, NotificationFactory factory) {
+        this.profiles = Objects.requireNonNull(profiles);
+        this.factory = Objects.requireNonNull(factory);
     }
 
     public void onEvent(DomainEvent event) {
         String title = titleFor(event.name());
         String detail = event.attributes().getOrDefault("detail", title);
-        if ("rating.submitted".equals(event.name())) {
-            send(event, event.attributes().get("subjectUserId"), title, detail);
-            return;
-        }
         List.of("buyerUserId", "providerUserId").stream()
                 .map(event.attributes()::get)
                 .filter(recipient -> recipient != null && !recipient.equals(event.actorUserId()))
@@ -32,8 +32,12 @@ public final class NotificationEventObserver {
         if (recipient == null || recipient.isBlank()) {
             return;
         }
-        gateway.send(new NotificationMessage(recipient, title, detail,
-                event.name(), NotificationChannelType.IN_APP));
+        var profile = profiles.findByUserId(recipient)
+                .orElseThrow(() -> new IllegalStateException("No existe el perfil destinatario"));
+        for (NotificationChannelType channel : profile.notificationChannels()) {
+            factory.create(channel).send(new NotificationMessage(recipient, title, detail,
+                    event.name(), channel));
+        }
     }
 
     private static String titleFor(String eventName) {
@@ -43,11 +47,11 @@ public final class NotificationEventObserver {
             case "booking.rejected" -> "Solicitud rechazada";
             case "booking.paid" -> "Pago confirmado";
             case "booking.reschedule-proposed" -> "Nueva propuesta de horario";
+            case "booking.reschedule-accepted" -> "Propuesta de horario aceptada";
             case "booking.rescheduled" -> "Horario reprogramado";
             case "booking.cancelled" -> "Contratación cancelada";
             case "booking.started" -> "Sesión iniciada";
             case "booking.completed" -> "Sesión completada";
-            case "rating.submitted" -> "Nueva calificación recibida";
             default -> "Actualización de SkillSwap";
         };
     }

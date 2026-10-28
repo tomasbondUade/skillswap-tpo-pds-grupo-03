@@ -31,11 +31,11 @@ public final class RatingNotificationEventPublisher implements DomainEventPublis
         Objects.requireNonNull(event, "Falta el evento");
 
         // Este publicador solo procesa eventos de calificaciones.
-        if (!"RatingSubmitted".equals(event.name())) {
+        if (!"rating.submitted".equals(event.name())) {
             return;
         }
 
-        String recipientUserId = event.attributes().get("recipientUserId");
+        String recipientUserId = event.attributes().get("subjectUserId");
 
         if (recipientUserId == null || recipientUserId.isBlank()) {
             throw new IllegalArgumentException(

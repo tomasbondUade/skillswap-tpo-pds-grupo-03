@@ -88,6 +88,7 @@ public final class BookingApplicationService implements BookingUseCases {
                     Booking booking = Booking.request(
                             publication,
                             actor,
+                            command.clientMessage(),
                             command.objective(),
                             command.slotId(),
                             publication.basePrice());
@@ -95,7 +96,7 @@ public final class BookingApplicationService implements BookingUseCases {
                     publications.save(publication);
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingRequested", saved, actor);
+                    publishAfterCommit("booking.requested", saved, actor);
 
                     return toView(saved);
                 }));
@@ -111,10 +112,8 @@ public final class BookingApplicationService implements BookingUseCases {
 
                     Booking booking = findBookingForUpdate(id);
 
-                    if (!actor.equals(booking.providerUserId())) {
-                        throw new SecurityException(
-                                "Solo el proveedor puede aceptar la contratación");
-                    }
+                    // Validar permisos y estado antes de reservar un cupo.
+                    booking.assertCanAccept(actor);
 
                     Publication publication =
                             findPublicationForUpdate(booking.publicationId());
@@ -126,7 +125,7 @@ public final class BookingApplicationService implements BookingUseCases {
                     publications.save(publication);
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingAccepted", saved, actor);
+                    publishAfterCommit("booking.accepted", saved, actor);
 
                     return toView(saved);
                 }));
@@ -148,7 +147,7 @@ public final class BookingApplicationService implements BookingUseCases {
 
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingRejected", saved, actor);
+                    publishAfterCommit("booking.rejected", saved, actor);
 
                     return toView(saved);
                 }));
@@ -195,7 +194,7 @@ public final class BookingApplicationService implements BookingUseCases {
 
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingPaid", saved, actor);
+                    publishAfterCommit("booking.paid", saved, actor);
 
                     return toView(saved);
                 }));
@@ -278,7 +277,7 @@ public final class BookingApplicationService implements BookingUseCases {
 
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingCancelled", saved, actor);
+                    publishAfterCommit("booking.cancelled", saved, actor);
 
                     return toView(saved);
                 }));
@@ -303,7 +302,7 @@ public final class BookingApplicationService implements BookingUseCases {
                     Booking saved = bookings.save(booking);
 
                     publishAfterCommit(
-                            "BookingRescheduleProposed", saved, actor);
+                            "booking.reschedule-proposed", saved, actor);
 
                     return toView(saved);
                 }));
@@ -351,7 +350,7 @@ public final class BookingApplicationService implements BookingUseCases {
                     Booking saved = bookings.save(booking);
 
                     publishAfterCommit(
-                            "BookingRescheduleResponse", saved, actor);
+                            completed ? "booking.rescheduled" : "booking.reschedule-accepted", saved, actor);
 
                     return toView(saved);
                 }));
@@ -370,7 +369,7 @@ public final class BookingApplicationService implements BookingUseCases {
 
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingStarted", saved, actor);
+                    publishAfterCommit("booking.started", saved, actor);
 
                     return toView(saved);
                 }));
@@ -389,7 +388,7 @@ public final class BookingApplicationService implements BookingUseCases {
 
                     Booking saved = bookings.save(booking);
 
-                    publishAfterCommit("BookingCompleted", saved, actor);
+                    publishAfterCommit("booking.completed", saved, actor);
 
                     return toView(saved);
                 }));
@@ -485,6 +484,7 @@ public final class BookingApplicationService implements BookingUseCases {
                 booking.buyerUserId(),
                 booking.providerUserId(),
                 booking.objective(),
+                booking.clientMessage(),
                 booking.slotId(),
                 booking.price().amount(),
                 booking.refund().amount(),

@@ -8,8 +8,18 @@ package ar.edu.uade.skillswap.infrastructure.identity;
  */
 public class MockIdentityClient {
 
+    private final String userId;
+
+    public MockIdentityClient() {
+        this("user-123");
+    }
+
+    public MockIdentityClient(String userId) {
+        this.userId = userId;
+    }
+
     public IdentityResponse getAuthenticatedIdentity() {
-        return new IdentityResponse("user-123");
+        return new IdentityResponse(userId);
     }
 
     public record IdentityResponse(String subject) {

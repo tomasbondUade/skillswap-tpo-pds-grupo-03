@@ -134,7 +134,7 @@ class RatingNotificationEventPublisherTest {
                                 new MockPushClient()));
 
         DomainEvent event = new DomainEvent(
-                "RatingSubmitted",
+                "rating.submitted",
                 "Rating",
                 "rating-1",
                 "buyer",
@@ -155,13 +155,13 @@ class RatingNotificationEventPublisherTest {
             String recipient, String score, String comment) {
 
         return new DomainEvent(
-                "RatingSubmitted",
+                "rating.submitted",
                 "Rating",
                 "rating-1",
                 "buyer",
                 LocalDateTime.now(),
                 Map.of(
-                        "recipientUserId", recipient,
+                        "subjectUserId", recipient,
                         "score", score,
                         "comment", comment));
     }

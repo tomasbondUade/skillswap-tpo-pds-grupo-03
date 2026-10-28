@@ -34,6 +34,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BookingApplicationServiceTest {
+    @Test
+    void noReservaOtroCupoSiLaContratacionYaFueAceptada() {
+        Fixture fixture = new Fixture(2);
+        fixture.service.accept(new BookingCommand(fixture.booking.id()));
+        assertEquals(1, fixture.publication.availability().get(0).remaining());
+
+        var error = assertThrows(ApplicationException.class,
+                () -> fixture.service.accept(new BookingCommand(fixture.booking.id())));
+
+        assertEquals(ApplicationErrorCode.INVALID_STATE, error.code());
+        assertEquals(1, fixture.publication.availability().get(0).remaining());
+        assertEquals(1, fixture.publishedEvents.size());
+    }
+
 
     @Test
     void acceptsBookingAndReservesPublicationSlot() {
@@ -49,7 +63,7 @@ class BookingApplicationServiceTest {
 
         assertEquals(1, fixture.publishedEvents.size());
         assertEquals(
-                "BookingAccepted",
+                "booking.accepted",
                 fixture.publishedEvents.get(0).name());
         assertEquals(1, fixture.transactions.operations);
     }
@@ -69,7 +83,7 @@ class BookingApplicationServiceTest {
         assertEquals(30, fixture.wallets.get("provider").balance().amount());
 
         assertEquals(1, fixture.publishedEvents.size());
-        assertEquals("BookingPaid", fixture.publishedEvents.get(0).name());
+        assertEquals("booking.paid", fixture.publishedEvents.get(0).name());
     }
 
     @Test
@@ -147,6 +161,10 @@ class BookingApplicationServiceTest {
         private final BookingApplicationService service;
 
         private Fixture() {
+            this(1);
+        }
+
+        private Fixture(int capacity) {
             publication = Publication.draft(
                     "provider",
                     "Java",
@@ -154,7 +172,7 @@ class BookingApplicationServiceTest {
                     "Tecnologia",
                     Modality.REMOTE,
                     60,
-                    1,
+                    capacity,
                     new SkillCoins(20),
                     List.of("Java"));
 
@@ -165,7 +183,7 @@ class BookingApplicationServiceTest {
                     AvailabilitySlot.of(
                             startsAt,
                             startsAt.plusHours(1),
-                            1));
+                            capacity));
 
             publication.publish("provider");
 

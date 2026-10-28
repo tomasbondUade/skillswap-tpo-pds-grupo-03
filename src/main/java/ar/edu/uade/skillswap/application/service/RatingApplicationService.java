@@ -105,13 +105,13 @@ public final class RatingApplicationService implements RatingUseCases {
                     // Construimos un evento independiente de los proveedores
                     // concretos de notificaciones.
                     DomainEvent event = new DomainEvent(
-                            "RatingSubmitted",
+                            "rating.submitted",
                             "Rating",
                             savedRating.id(),
                             savedRating.authorUserId(),
                             savedRating.createdAt(),
                             Map.of(
-                                    "recipientUserId", savedRating.subjectUserId(),
+                                    "subjectUserId", savedRating.subjectUserId(),
                                     "bookingId", savedRating.bookingId(),
                                     "score", String.valueOf(savedRating.score()),
                                     "comment", savedRating.comment()

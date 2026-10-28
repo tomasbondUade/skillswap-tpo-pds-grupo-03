@@ -50,11 +50,11 @@ class RatingApplicationServiceTest {
         assertEquals(1, fixture.publishedEvents.size());
 
         DomainEvent event = fixture.publishedEvents.get(0);
-        assertEquals("RatingSubmitted", event.name());
+        assertEquals("rating.submitted", event.name());
         assertEquals("Rating", event.aggregateType());
         assertEquals(view.id(), event.aggregateId());
         assertEquals("buyer", event.actorUserId());
-        assertEquals("provider", event.attributes().get("recipientUserId"));
+        assertEquals("provider", event.attributes().get("subjectUserId"));
         assertEquals(fixture.booking.id(), event.attributes().get("bookingId"));
         assertEquals("5", event.attributes().get("score"));
         assertEquals("Excelente", event.attributes().get("comment"));
@@ -74,7 +74,6 @@ class RatingApplicationServiceTest {
 
         assertEquals(ApplicationErrorCode.CONFLICT, error.code());
         assertEquals(1, fixture.records.size());
-        assertEquals(1, fixture.events.size());
         assertEquals(5.0, fixture.profiles.get("provider").reputation());
 
         // Solo la calificación aceptada debe publicar un evento.
@@ -102,7 +101,7 @@ class RatingApplicationServiceTest {
         assertEquals(2, fixture.publishedEvents.size());
         assertEquals("provider", fixture.publishedEvents.get(1).actorUserId());
         assertEquals("buyer",
-                fixture.publishedEvents.get(1).attributes().get("recipientUserId"));
+                fixture.publishedEvents.get(1).attributes().get("subjectUserId"));
     }
 
     private static final class Fixture {

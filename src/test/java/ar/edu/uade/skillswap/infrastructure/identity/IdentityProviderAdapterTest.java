@@ -3,8 +3,26 @@ package ar.edu.uade.skillswap.infrastructure.identity;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class IdentityProviderAdapterTest {
+    @Test
+    void respetaElUsuarioConfiguradoEnElClienteExterno() {
+        var adapter = new IdentityProviderAdapter(new MockIdentityClient("user-mateo"));
+        assertEquals("user-mateo", adapter.currentUserId());
+    }
+
+    @Test
+    void dejaQueAplicacionRechaceUnaIdentidadAusente() {
+        var client = new MockIdentityClient() {
+            @Override
+            public IdentityResponse getAuthenticatedIdentity() {
+                return null;
+            }
+        };
+        assertNull(new IdentityProviderAdapter(client).currentUserId());
+    }
+
 
     @Test
     void devuelveElIdDelUsuarioAutenticado() {
