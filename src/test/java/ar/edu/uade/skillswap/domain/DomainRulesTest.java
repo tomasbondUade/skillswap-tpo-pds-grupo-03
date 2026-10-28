@@ -59,6 +59,24 @@ class DomainRulesTest {
     }
 
     @Test
+    void availabilityReservationsCannotExceedCapacityOrReleaseAnEmptySlot() {
+        Publication publication = draft("provider", "Java", List.of("Java"));
+        publication.addAvailability("provider", slot(1));
+        publication.publish("provider");
+        String slotId = publication.availability().get(0).id();
+
+        publication.reserve(slotId);
+        assertEquals(0, publication.availability().get(0).remaining());
+        assertThrows(IllegalStateException.class, () -> publication.reserve(slotId));
+        assertEquals(1, publication.availability().get(0).reserved());
+
+        publication.releaseReservation(slotId);
+        assertEquals(1, publication.availability().get(0).remaining());
+        assertThrows(IllegalStateException.class, () -> publication.releaseReservation(slotId));
+        assertEquals(0, publication.availability().get(0).reserved());
+    }
+
+    @Test
     void bookingRequestMustTargetPublishedOfferOwnedBySomeoneElseAndAnAvailableSlot() {
         Publication publication = draft("provider", "Java", List.of("Java"));
         publication.addAvailability("provider", slot(1));
@@ -72,9 +90,28 @@ class DomainRulesTest {
         Booking.request(publication, "buyer", "Objetivo", slotId, new SkillCoins(20));
         assertEquals(1, publication.requestCount());
 
+        assertThrows(IllegalArgumentException.class, () -> Booking.request(
+                publication, "another-buyer", "Objetivo", "missing-slot", new SkillCoins(20)));
+
         publication.reserve(slotId);
         assertThrows(IllegalStateException.class, () -> Booking.request(
                 publication, "another-buyer", "Objetivo", slotId, new SkillCoins(20)));
+    }
+
+    @Test
+    void bookingRequestKeepsOptionalClientMessageAndRequiredObjective() {
+        Publication publication = draft("provider", "Java", List.of("Java"));
+        publication.addAvailability("provider", slot(1));
+        publication.publish("provider");
+        String slotId = publication.availability().get(0).id();
+
+        Booking booking = Booking.request(publication, "buyer", "  Necesito prepararme para una entrevista  ",
+                "  Practicar diseño de APIs  ", slotId, new SkillCoins(20));
+
+        assertEquals("Necesito prepararme para una entrevista", booking.clientMessage());
+        assertEquals("Practicar diseño de APIs", booking.objective());
+        assertThrows(IllegalArgumentException.class, () -> Booking.request(
+                publication, "another-buyer", null, " ", slotId, new SkillCoins(20)));
     }
 
     @Test
@@ -153,6 +190,49 @@ class DomainRulesTest {
         assertFalse(profile.active());
         assertThrows(IllegalStateException.class, () -> profile.updateDetails(
                 "provider", "Nombre", "bio", "UTC", Set.of(), Set.of()));
+    }
+
+    @Test
+    void profileActivatesAndDeactivatesLogicallyOnlyForItsOwner() {
+        Profile profile = Profile.register("provider", "Mentora", "", "UTC",
+                Set.of("Java"), Set.of("Backend"), List.of());
+        Booking historicalBooking = booking(120);
+        historicalBooking.accept("provider");
+        List<?> bookingHistoryBeforeDeactivation = historicalBooking.history();
+
+        assertThrows(IllegalStateException.class, () -> profile.activate("provider"));
+        assertThrows(SecurityException.class, () -> profile.deactivate("other"));
+
+        profile.deactivate("provider");
+        assertFalse(profile.active());
+        assertEquals(BookingStatus.ACCEPTED, historicalBooking.status());
+        assertEquals(bookingHistoryBeforeDeactivation, historicalBooking.history());
+        assertThrows(IllegalStateException.class, () -> profile.deactivate("provider"));
+        assertThrows(SecurityException.class, () -> profile.activate("other"));
+
+        profile.activate("provider");
+        assertTrue(profile.active());
+        assertThrows(IllegalStateException.class, () -> profile.activate("provider"));
+    }
+
+    @Test
+    void profileRejectsInvalidIdentityAndDoesNotPartiallyApplyInvalidDetails() {
+        assertThrows(IllegalArgumentException.class, () -> Profile.register(" ", "Mentora", "", "UTC",
+                Set.of(), Set.of(), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider", "Mentora", "", "UTC",
+                Set.of(" "), Set.of(), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider", "Mentora", "", " ",
+                Set.of(), Set.of(), List.of()));
+
+        Profile profile = Profile.register("provider", "Mentora", "Bio", "UTC",
+                List.of(" Java ", "Java", "SQL"), List.of("Backend"), List.of());
+        assertEquals(Set.of("Java", "SQL"), profile.skills());
+        assertThrows(IllegalArgumentException.class, () -> profile.updateDetails(
+                "provider", "Nuevo nombre", "Nueva bio", "UTC-3", List.of("Java", " "), List.of("Backend")));
+        assertEquals("Mentora", profile.displayName());
+        assertEquals("Bio", profile.biography());
+        assertEquals("UTC", profile.timeZone());
+        assertEquals(Set.of("Java", "SQL"), profile.skills());
     }
 
     @Test

@@ -40,8 +40,13 @@ public final class MockSkillSwapControllers implements UiControllers,
     private Publicacion pub(String id, String titulo, String descripcion, String categoria,
                             Modalidad modalidad, int duracion, int precio, double reputacion,
                             String proveedor, List<String> tags, boolean destacada) {
+        LocalDateTime firstStart = LocalDateTime.now().plusDays(3).withHour(10).withMinute(0).withSecond(0).withNano(0);
+        List<FranjaDisponibilidad> franjas = List.of(
+                new FranjaDisponibilidad(id + "-slot-1", firstStart, firstStart.plusMinutes(duracion), 1),
+                new FranjaDisponibilidad(id + "-slot-2", firstStart.plusDays(2),
+                        firstStart.plusDays(2).plusMinutes(duracion), 1));
         return new Publicacion(id, titulo, descripcion, categoria, modalidad, duracion, precio,
-                reputacion, proveedor, tags, EstadoPublicacion.PUBLICADA, destacada);
+                reputacion, proveedor, tags, EstadoPublicacion.PUBLICADA, destacada, franjas);
     }
 
     @Override public BusquedaController busqueda() { return this; }
@@ -80,16 +85,41 @@ public final class MockSkillSwapControllers implements UiControllers,
 
     @Override public Publicacion cambiarEstado(String userId, String id, EstadoPublicacion estado) {
         for (int i=0;i<publicaciones.size();i++) if (publicaciones.get(i).id().equals(id)) {
-            Publicacion p=publicaciones.get(i); Publicacion n=new Publicacion(p.id(),p.titulo(),p.descripcion(),p.categoria(),p.modalidad(),p.duracionMinutos(),p.precio(),p.reputacion(),p.proveedor(),p.etiquetas(),estado,p.destacada()); publicaciones.set(i,n); return n;
+            Publicacion p=publicaciones.get(i); Publicacion n=new Publicacion(p.id(),p.titulo(),p.descripcion(),p.categoria(),p.modalidad(),p.duracionMinutos(),p.precio(),p.reputacion(),p.proveedor(),p.etiquetas(),estado,p.destacada(),p.franjasDisponibles()); publicaciones.set(i,n); return n;
         }
         throw new IllegalArgumentException("Publicación inexistente");
     }
 
     @Override public List<Contratacion> listarContrataciones(String userId) { return List.copyOf(contrataciones); }
-    @Override public Contratacion solicitar(String userId, String publicacionId, String objetivo) {
-        Publicacion p=publicaciones.stream().filter(x->x.id().equals(publicacionId)).findFirst().orElseThrow();
-        Contratacion c=new Contratacion(UUID.randomUUID().toString(),p.titulo(),p.proveedor(),LocalDateTime.now().plusDays(4),p.precio(),EstadoContratacion.PENDIENTE); contrataciones.add(0,c);
-        notificaciones.add(0,new Notificacion(UUID.randomUUID().toString(),"Solicitud enviada", "Tu solicitud para “"+p.titulo()+"” fue enviada.",LocalDateTime.now(),false,"RESERVA")); return c;
+    @Override public Contratacion solicitar(String userId, String publicacionId, String mensajeCliente,
+                                            String objetivo, String franjaId) {
+        if (objetivo == null || objetivo.isBlank()) throw new IllegalArgumentException("El objetivo de la mentoría es obligatorio");
+        if (franjaId == null || franjaId.isBlank()) throw new IllegalArgumentException("Debe seleccionar una franja disponible");
+
+        int publicationIndex = indexOfPublication(publicacionId);
+        Publicacion publication = publicaciones.get(publicationIndex);
+        if (publication.estado() != EstadoPublicacion.PUBLICADA) {
+            throw new IllegalStateException("Solo se pueden solicitar publicaciones activas");
+        }
+        FranjaDisponibilidad selectedSlot = publication.franjasDisponibles().stream()
+                .filter(slot -> slot.id().equals(franjaId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("La franja no pertenece a la publicación"));
+        if (!selectedSlot.disponible()) throw new IllegalStateException("La franja ya no tiene cupos disponibles");
+
+        String normalizedMessage = mensajeCliente == null ? "" : mensajeCliente.trim();
+        Contratacion c = new Contratacion(UUID.randomUUID().toString(), publication.titulo(),
+                publication.proveedor(), selectedSlot.inicio(), publication.precio(),
+                EstadoContratacion.PENDIENTE, objetivo.trim(), normalizedMessage, selectedSlot.id());
+        contrataciones.add(0,c);
+        notificaciones.add(0,new Notificacion(UUID.randomUUID().toString(),"Solicitud enviada", "Tu solicitud para “"+publication.titulo()+"” fue enviada.",LocalDateTime.now(),false,"RESERVA")); return c;
+    }
+
+    private int indexOfPublication(String publicationId) {
+        for (int index = 0; index < publicaciones.size(); index++) {
+            if (publicaciones.get(index).id().equals(publicationId)) return index;
+        }
+        throw new IllegalArgumentException("Publicación inexistente");
     }
 
     @Override public Contratacion avanzar(String userId, String id) { return updateContract(id, false); }
@@ -97,7 +127,8 @@ public final class MockSkillSwapControllers implements UiControllers,
     private Contratacion updateContract(String id, boolean cancel) {
         for(int i=0;i<contrataciones.size();i++) if(contrataciones.get(i).id().equals(id)) {
             Contratacion c=contrataciones.get(i); EstadoContratacion next=cancel?EstadoContratacion.CANCELADA:switch(c.estado()) {case PENDIENTE->EstadoContratacion.ACEPTADA; case ACEPTADA->EstadoContratacion.CONFIRMADA; case CONFIRMADA->EstadoContratacion.EN_CURSO; case EN_CURSO->EstadoContratacion.COMPLETADA; default->c.estado();};
-            Contratacion n=new Contratacion(c.id(),c.titulo(),c.contraparte(),c.fecha(),c.precio(),next); contrataciones.set(i,n); return n;
+            Contratacion n=new Contratacion(c.id(),c.titulo(),c.contraparte(),c.fecha(),c.precio(),next,
+                    c.objetivo(),c.mensajeCliente(),c.franjaId()); contrataciones.set(i,n); return n;
         } throw new IllegalArgumentException("Contratación inexistente");
     }
 

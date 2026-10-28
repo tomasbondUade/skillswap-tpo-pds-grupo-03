@@ -51,13 +51,161 @@ public final class SkillSwapView extends JPanel {
     private JPanel cardGrid(List<Publicacion> list){JPanel grid=new JPanel(new GridLayout(0,3,14,14));grid.setOpaque(false);grid.setAlignmentX(LEFT_ALIGNMENT);for(Publicacion x:list)grid.add(listingCard(x));return grid;}
     private JComponent listingCard(Publicacion x){JPanel c=card(new BorderLayout(0,12));JPanel top=new JPanel(new BorderLayout());top.setOpaque(false);top.add(pill(x.categoria(),TEAL),BorderLayout.WEST);top.add(label("★ "+x.reputacion(),H3,GOLD),BorderLayout.EAST);c.add(top,BorderLayout.NORTH);JPanel mid=new JPanel();mid.setOpaque(false);mid.setLayout(new BoxLayout(mid,BoxLayout.Y_AXIS));JLabel t=label("<html><div style='width:210px'>"+x.titulo()+"</div></html>",H3,TEXT);mid.add(t);mid.add(Box.createVerticalStrut(7));mid.add(label("Por "+x.proveedor(),SMALL,MUTED));mid.add(Box.createVerticalStrut(9));mid.add(label("<html><div style='width:215px;color:#677480'>"+x.descripcion()+"</div></html>",BODY,MUTED));mid.add(Box.createVerticalStrut(9));mid.add(label(x.modalidad()+"  ·  "+x.duracionMinutos()+" min",SMALL,MUTED));c.add(mid);JPanel bottom=new JPanel(new BorderLayout());bottom.setOpaque(false);bottom.add(label(x.precio()+" ◈",new Font("SansSerif",Font.BOLD,20),NAVY),BorderLayout.WEST);JButton detail=button("Ver detalle",true);detail.addActionListener(e->showDetail(x));bottom.add(detail,BorderLayout.EAST);c.add(bottom,BorderLayout.SOUTH);return c;}
 
-    private void showDetail(Publicacion x){JPanel p=base();JButton back=button("← Volver a explorar",false);back.setAlignmentX(LEFT_ALIGNMENT);back.addActionListener(e->showExplore());p.add(back);p.add(Box.createVerticalStrut(18));JPanel c=card(new BorderLayout(28,0));c.setMaximumSize(new Dimension(Integer.MAX_VALUE,390));JPanel info=new JPanel();info.setOpaque(false);info.setLayout(new BoxLayout(info,BoxLayout.Y_AXIS));info.add(pill(x.categoria(),TEAL));info.add(Box.createVerticalStrut(14));info.add(label("<html><div style='width:540px'>"+x.titulo()+"</div></html>",H1,TEXT));info.add(Box.createVerticalStrut(10));info.add(label("★ "+x.reputacion()+"  ·  "+x.proveedor()+"  ·  "+x.modalidad(),H3,MUTED));info.add(Box.createVerticalStrut(22));info.add(label("Sobre esta propuesta",H2,TEXT));info.add(Box.createVerticalStrut(8));info.add(label("<html><div style='width:550px'>"+x.descripcion()+"</div></html>",BODY,MUTED));info.add(Box.createVerticalStrut(16));info.add(label("Duración: "+x.duracionMinutos()+" minutos",BODY,TEXT));c.add(info);JPanel buy=new Theme.RoundedPanel(16,new Color(239,247,246));buy.setLayout(new BoxLayout(buy,BoxLayout.Y_AXIS));buy.setBorder(new EmptyBorder(22,22,22,22));buy.add(label("INVERSIÓN",SMALL,MUTED));buy.add(label(x.precio()+" SkillCoins",new Font("SansSerif",Font.BOLD,25),NAVY));buy.add(Box.createVerticalStrut(12));buy.add(label("Saldo disponible: "+controllers.wallet().consultarSaldo(USER_ID),SMALL,MUTED));buy.add(Box.createVerticalStrut(20));JButton req=button("Solicitar mentoría",true);req.addActionListener(e->{controllers.contrataciones().solicitar(USER_ID,x.id(),"Quiero profundizar y practicar");message("¡Solicitud enviada!", "Podés seguir su estado desde Contrataciones.");showContracts();});buy.add(req);c.add(buy,BorderLayout.EAST);c.setAlignmentX(LEFT_ALIGNMENT);p.add(c);page("Detalle",p);}
+    private void showDetail(Publicacion publication) {
+        JPanel page = base();
+        JButton back = button("← Volver a explorar", false);
+        back.setAlignmentX(LEFT_ALIGNMENT);
+        back.addActionListener(event -> showExplore());
+        page.add(back);
+        page.add(Box.createVerticalStrut(18));
+
+        JPanel detail = card(new BorderLayout(28, 0));
+        detail.setMaximumSize(new Dimension(Integer.MAX_VALUE, 600));
+        JPanel information = new JPanel();
+        information.setOpaque(false);
+        information.setLayout(new BoxLayout(information, BoxLayout.Y_AXIS));
+        information.add(pill(publication.categoria(), TEAL));
+        information.add(Box.createVerticalStrut(14));
+        information.add(label("<html><div style='width:540px'>" + publication.titulo() + "</div></html>", H1, TEXT));
+        information.add(Box.createVerticalStrut(10));
+        information.add(label("★ " + publication.reputacion() + "  ·  " + publication.proveedor()
+                + "  ·  " + publication.modalidad(), H3, MUTED));
+        information.add(Box.createVerticalStrut(22));
+        information.add(label("Sobre esta propuesta", H2, TEXT));
+        information.add(Box.createVerticalStrut(8));
+        information.add(label("<html><div style='width:550px'>" + publication.descripcion() + "</div></html>", BODY, MUTED));
+        information.add(Box.createVerticalStrut(16));
+        information.add(label("Duración: " + publication.duracionMinutos() + " minutos", BODY, TEXT));
+        detail.add(information);
+
+        JPanel requestForm = new Theme.RoundedPanel(16, new Color(239, 247, 246));
+        requestForm.setLayout(new BoxLayout(requestForm, BoxLayout.Y_AXIS));
+        requestForm.setBorder(new EmptyBorder(22, 22, 22, 22));
+        requestForm.add(label("INVERSIÓN", SMALL, MUTED));
+        requestForm.add(label(publication.precio() + " SkillCoins", new Font("SansSerif", Font.BOLD, 25), NAVY));
+        requestForm.add(Box.createVerticalStrut(8));
+        requestForm.add(label("Saldo disponible: " + controllers.wallet().consultarSaldo(USER_ID), SMALL, MUTED));
+        requestForm.add(Box.createVerticalStrut(14));
+        requestForm.add(label("Franja disponible", H3, TEXT));
+
+        List<FranjaDisponibilidad> availableSlots = publication.franjasDisponibles().stream()
+                .filter(FranjaDisponibilidad::disponible)
+                .toList();
+        JComboBox<FranjaDisponibilidad> slots = new JComboBox<>(availableSlots.toArray(FranjaDisponibilidad[]::new));
+        slots.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof FranjaDisponibilidad slot) setText(formatSlot(slot));
+                return this;
+            }
+        });
+        slots.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        requestForm.add(slots);
+        requestForm.add(Box.createVerticalStrut(12));
+
+        JTextField objective = new JTextField();
+        objective.setBorder(BorderFactory.createTitledBorder("Objetivo de la mentoría (obligatorio)"));
+        objective.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+        requestForm.add(objective);
+        requestForm.add(Box.createVerticalStrut(8));
+
+        JTextArea clientMessage = new JTextArea(3, 18);
+        clientMessage.setLineWrap(true);
+        clientMessage.setWrapStyleWord(true);
+        JScrollPane messageScroll = new JScrollPane(clientMessage);
+        messageScroll.setBorder(BorderFactory.createTitledBorder("Mensaje para el mentor (opcional)"));
+        messageScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 92));
+        requestForm.add(messageScroll);
+        requestForm.add(Box.createVerticalStrut(12));
+
+        JButton request = button("Solicitar mentoría", true);
+        request.setEnabled(!availableSlots.isEmpty());
+        request.addActionListener(event -> {
+            FranjaDisponibilidad selectedSlot = (FranjaDisponibilidad) slots.getSelectedItem();
+            if (objective.getText().isBlank()) {
+                message("Falta el objetivo", "Contanos qué querés lograr en la mentoría.");
+                return;
+            }
+            if (selectedSlot == null) {
+                message("Sin disponibilidad", "Esta publicación no tiene franjas disponibles.");
+                return;
+            }
+            controllers.contrataciones().solicitar(USER_ID, publication.id(), clientMessage.getText(),
+                    objective.getText(), selectedSlot.id());
+            message("¡Solicitud enviada!", "Podés seguir su estado desde Contrataciones.");
+            showContracts();
+        });
+        requestForm.add(request);
+        if (availableSlots.isEmpty()) {
+            requestForm.add(Box.createVerticalStrut(8));
+            requestForm.add(label("No hay franjas con cupos", SMALL, DANGER));
+        }
+
+        detail.add(requestForm, BorderLayout.EAST);
+        detail.setAlignmentX(LEFT_ALIGNMENT);
+        page.add(detail);
+        page("Detalle", page);
+    }
+
+    private String formatSlot(FranjaDisponibilidad slot) {
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("dd/MM HH:mm");
+        return slot.inicio().format(format) + " – " + slot.fin().format(DateTimeFormatter.ofPattern("HH:mm"))
+                + " · " + slot.cuposDisponibles() + " cupo(s)";
+    }
 
     private void showListings(){JPanel p=base();JPanel title=new JPanel(new BorderLayout());title.setOpaque(false);title.add(label("Gestioná tus publicaciones",H2,TEXT));JButton create=button("+ Nueva publicación",true);create.addActionListener(e->createListing());title.add(create,BorderLayout.EAST);title.setMaximumSize(new Dimension(Integer.MAX_VALUE,45));title.setAlignmentX(LEFT_ALIGNMENT);p.add(title);p.add(Box.createVerticalStrut(15));List<Publicacion> own=controllers.publicaciones().listarPropias(USER_ID);if(own.isEmpty()){p.add(empty("Todavía no publicaste servicios","Creá tu primera propuesta para comenzar a compartir tu talento."));}else for(Publicacion x:own){JPanel row=card(new BorderLayout(12,0));row.setMaximumSize(new Dimension(Integer.MAX_VALUE,90));row.add(label(x.titulo(),H3,TEXT));row.add(pill(x.estado().name(),x.estado()==EstadoPublicacion.PUBLICADA?TEAL:MUTED),BorderLayout.CENTER);JButton toggle=button(x.estado()==EstadoPublicacion.PUBLICADA?"Pausar":"Publicar",false);toggle.addActionListener(e->{controllers.publicaciones().cambiarEstado(USER_ID,x.id(),x.estado()==EstadoPublicacion.PUBLICADA?EstadoPublicacion.PAUSADA:EstadoPublicacion.PUBLICADA);showListings();});row.add(toggle,BorderLayout.EAST);p.add(row);p.add(Box.createVerticalStrut(10));}page("Mis publicaciones",p);}
 
     private void createListing(){JTextField title=new JTextField();JTextArea desc=new JTextArea(4,26);JComboBox<String> cat=new JComboBox<>(controllers.busqueda().categorias().stream().filter(c->!c.equals("Todas")).toArray(String[]::new));JPanel form=new JPanel(new GridLayout(0,1,4,5));form.add(new JLabel("Título"));form.add(title);form.add(new JLabel("Descripción"));form.add(new JScrollPane(desc));form.add(new JLabel("Categoría"));form.add(cat);if(JOptionPane.showConfirmDialog(this,form,"Nueva publicación",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE)==JOptionPane.OK_OPTION&&!title.getText().isBlank()){controllers.publicaciones().crearBorrador(USER_ID,title.getText(),desc.getText(),(String)cat.getSelectedItem(),Modalidad.REMOTA,60,150);message("Borrador creado","La publicación quedó lista para que tus alumnos conecten su flujo real.");showListings();}}
 
-    private void showContracts(){JPanel p=base();addSection(p,"Tus contrataciones","Avanzá el flujo para probar los estados del sistema");for(Contratacion x:controllers.contrataciones().listarContrataciones(USER_ID)){JPanel row=card(new BorderLayout(16,0));row.setMaximumSize(new Dimension(Integer.MAX_VALUE,105));JPanel txt=new JPanel();txt.setOpaque(false);txt.setLayout(new BoxLayout(txt,BoxLayout.Y_AXIS));txt.add(label(x.titulo(),H3,TEXT));txt.add(Box.createVerticalStrut(5));txt.add(label(x.contraparte()+"  ·  "+x.fecha().format(DateTimeFormatter.ofPattern("dd/MM · HH:mm")),BODY,MUTED));row.add(txt);row.add(pill(x.estado().name(),x.estado()==EstadoContratacion.COMPLETADA?TEAL:NAVY_2),BorderLayout.CENTER);JPanel actions=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));actions.setOpaque(false);if(x.estado()!=EstadoContratacion.COMPLETADA&&x.estado()!=EstadoContratacion.CANCELADA){JButton next=button("Avanzar estado",true);next.addActionListener(e->{controllers.contrataciones().avanzar(USER_ID,x.id());showContracts();});actions.add(next);JButton cancel=button("Cancelar",false);cancel.addActionListener(e->{controllers.contrataciones().cancelar(USER_ID,x.id());showContracts();});actions.add(cancel);}row.add(actions,BorderLayout.EAST);p.add(row);p.add(Box.createVerticalStrut(11));}page("Contrataciones",p);}
+    private void showContracts() {
+        JPanel p = base();
+        addSection(p, "Tus contrataciones", "Los cambios de estado requieren autorización del participante correspondiente");
+        for (Contratacion booking : controllers.contrataciones().listarContrataciones(USER_ID)) {
+            JPanel row = card(new BorderLayout(16, 0));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170));
+            JPanel text = new JPanel();
+            text.setOpaque(false);
+            text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+            text.add(label(booking.titulo(), H3, TEXT));
+            text.add(Box.createVerticalStrut(5));
+            text.add(label(booking.contraparte() + "  ·  "
+                    + booking.fecha().format(DateTimeFormatter.ofPattern("dd/MM · HH:mm")), BODY, MUTED));
+            if (!booking.objetivo().isBlank()) text.add(label("Objetivo: " + booking.objetivo(), SMALL, MUTED));
+            if (!booking.mensajeCliente().isBlank()) text.add(label("Mensaje: " + booking.mensajeCliente(), SMALL, MUTED));
+            row.add(text);
+            row.add(pill(booking.estado().name(), booking.estado() == EstadoContratacion.COMPLETADA ? TEAL : NAVY_2), BorderLayout.CENTER);
+
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+            actions.setOpaque(false);
+            boolean terminal = booking.estado() == EstadoContratacion.COMPLETADA
+                    || booking.estado() == EstadoContratacion.CANCELADA
+                    || booking.estado() == EstadoContratacion.RECHAZADA;
+            if (!terminal) {
+                if (controllers.contrataciones().puedeAvanzar(USER_ID, booking.id())) {
+                    JButton next = button("Avanzar estado", true);
+                    next.addActionListener(event -> {
+                        controllers.contrataciones().avanzar(USER_ID, booking.id());
+                        showContracts();
+                    });
+                    actions.add(next);
+                } else if (booking.estado() == EstadoContratacion.PENDIENTE) {
+                    actions.add(label("Esperando al mentor", SMALL, MUTED));
+                }
+                JButton cancel = button("Cancelar", false);
+                cancel.addActionListener(event -> {
+                    controllers.contrataciones().cancelar(USER_ID, booking.id());
+                    showContracts();
+                });
+                actions.add(cancel);
+            }
+            row.add(actions, BorderLayout.EAST);
+            p.add(row);
+            p.add(Box.createVerticalStrut(11));
+        }
+        page("Contrataciones", p);
+    }
 
     private void showWallet(){JPanel p=base();JPanel balance=new Theme.RoundedPanel(22,NAVY_2);balance.setLayout(new BorderLayout());balance.setBorder(new EmptyBorder(24,26,24,26));balance.setMaximumSize(new Dimension(Integer.MAX_VALUE,120));JPanel btxt=new JPanel();btxt.setOpaque(false);btxt.setLayout(new BoxLayout(btxt,BoxLayout.Y_AXIS));btxt.add(label("SALDO DISPONIBLE",SMALL,new Color(184,209,222)));btxt.add(label(controllers.wallet().consultarSaldo(USER_ID)+" SkillCoins",new Font("SansSerif",Font.BOLD,30),Color.WHITE));balance.add(btxt);JButton add=button("+ Acreditar demo",true);add.addActionListener(e->{controllers.wallet().acreditarDemo(USER_ID,500);showWallet();});balance.add(add,BorderLayout.EAST);balance.setAlignmentX(LEFT_ALIGNMENT);p.add(balance);p.add(Box.createVerticalStrut(24));addSection(p,"Movimientos recientes",null);for(Movimiento m:controllers.wallet().listarMovimientos(USER_ID)){JPanel row=card(new BorderLayout());row.setMaximumSize(new Dimension(Integer.MAX_VALUE,72));JPanel t=new JPanel();t.setOpaque(false);t.setLayout(new BoxLayout(t,BoxLayout.Y_AXIS));t.add(label(m.concepto(),H3,TEXT));t.add(label(m.fecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy · HH:mm")),SMALL,MUTED));row.add(t);row.add(label((m.importe()>0?"+":"")+m.importe()+" ◈",H3,m.importe()>0?TEAL:DANGER),BorderLayout.EAST);p.add(row);p.add(Box.createVerticalStrut(8));}page("SkillCoins",p);}
 

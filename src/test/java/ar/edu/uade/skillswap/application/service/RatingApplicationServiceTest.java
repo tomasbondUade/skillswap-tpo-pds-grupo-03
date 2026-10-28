@@ -74,6 +74,7 @@ class RatingApplicationServiceTest {
 
         assertEquals(ApplicationErrorCode.CONFLICT, error.code());
         assertEquals(1, fixture.records.size());
+        assertEquals(1, fixture.events.size());
         assertEquals(5.0, fixture.profiles.get("provider").reputation());
 
         // Solo la calificación aceptada debe publicar un evento.

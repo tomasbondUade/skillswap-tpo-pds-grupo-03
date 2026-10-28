@@ -1,7 +1,7 @@
 package ar.edu.uade.skillswap;
 
 import ar.edu.uade.skillswap.controllers.UiControllers;
-import ar.edu.uade.skillswap.mock.MockSkillSwapControllers;
+import ar.edu.uade.skillswap.infrastructure.WiredUiControllers;
 import ar.edu.uade.skillswap.ui.SkillSwapView;
 import ar.edu.uade.skillswap.ui.Theme;
 
@@ -16,7 +16,7 @@ public final class SkillSwapApplication {
 
     public static void main(String[] args) throws Exception {
         Theme.install();
-        UiControllers controllers = new MockSkillSwapControllers();
+        UiControllers controllers = new WiredUiControllers();
         if (args.length == 2 && "--screenshot".equals(args[0])) {
             SkillSwapView view = new SkillSwapView(controllers);
             view.setSize(1365, 768); view.doLayout(); layoutTree(view);
