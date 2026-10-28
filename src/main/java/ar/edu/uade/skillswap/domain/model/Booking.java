@@ -16,6 +16,7 @@ public final class Booking {
     private final String buyerUserId;
     private final String providerUserId;
     private final String objective;
+    private final String clientMessage;
     private String slotId;
     private String proposedSlotId;
     private boolean buyerAcceptedReschedule;
@@ -33,6 +34,17 @@ public final class Booking {
                    LocalDateTime createdAt, LocalDateTime paidAt, SkillCoins refund,
                    String proposedSlotId, boolean buyerAcceptedReschedule,
                    boolean providerAcceptedReschedule, Collection<StatusHistoryEntry> history) {
+        this(id, publicationId, buyerUserId, providerUserId, objective, "", slotId, price,
+                state, createdAt, paidAt, refund, proposedSlotId, buyerAcceptedReschedule,
+                providerAcceptedReschedule, history);
+    }
+
+    /** Constructor de reconstitución que conserva el mensaje original del cliente. */
+    public Booking(String id, String publicationId, String buyerUserId, String providerUserId,
+                   String objective, String clientMessage, String slotId, SkillCoins price,
+                   BookingState state, LocalDateTime createdAt, LocalDateTime paidAt,
+                   SkillCoins refund, String proposedSlotId, boolean buyerAcceptedReschedule,
+                   boolean providerAcceptedReschedule, Collection<StatusHistoryEntry> history) {
         this.id = id == null ? UUID.randomUUID().toString() : required(id, "Falta identificador de contratación");
         this.publicationId = required(publicationId, "Falta publicación");
         this.buyerUserId = required(buyerUserId, "Falta cliente");
@@ -41,6 +53,7 @@ public final class Booking {
             throw new IllegalArgumentException("El autor no puede contratar su propia publicación");
         }
         this.objective = required(objective, "El objetivo es obligatorio");
+        this.clientMessage = clientMessage == null ? "" : clientMessage.trim();
         this.slotId = required(slotId, "Debe elegirse una franja");
         this.price = Objects.requireNonNull(price, "Falta el precio de la contratación");
         this.state = Objects.requireNonNull(state, "Falta estado de contratación");
@@ -74,6 +87,12 @@ public final class Booking {
 
     public static Booking request(Publication publication, String buyer, String objective,
                                   String slotId, SkillCoins price) {
+        return request(publication, buyer, "", objective, slotId, price);
+    }
+
+    /** Crea una solicitud con mensaje, objetivo y franja elegida por quien solicita. */
+    public static Booking request(Publication publication, String buyer, String clientMessage,
+                                  String objective, String slotId, SkillCoins price) {
         Objects.requireNonNull(publication, "Falta publicación");
         String requester = required(buyer, "Falta cliente");
         String goal = required(objective, "El objetivo es obligatorio");
@@ -81,9 +100,9 @@ public final class Booking {
         SkillCoins agreedPrice = Objects.requireNonNull(price, "Falta el precio de la contratación");
         publication.recordBookingRequest(requester, selectedSlot);
         LocalDateTime requestedAt = LocalDateTime.now();
-        Booking booking = new Booking(null, publication.id(), requester, publication.authorUserId(), goal, selectedSlot,
-                agreedPrice, BookingStates.pending(), requestedAt, null, SkillCoins.zero(), null,
-                false, false, List.of());
+        Booking booking = new Booking(null, publication.id(), requester, publication.authorUserId(), goal,
+                clientMessage, selectedSlot, agreedPrice, BookingStates.pending(), requestedAt, null,
+                SkillCoins.zero(), null, false, false, List.of());
         booking.history.add(new StatusHistoryEntry(null, BookingStatus.PENDING.name(),
                 requester, "Solicitud creada", requestedAt));
         return booking;
@@ -187,6 +206,7 @@ public final class Booking {
     public String buyerUserId() { return buyerUserId; }
     public String providerUserId() { return providerUserId; }
     public String objective() { return objective; }
+    public String clientMessage() { return clientMessage; }
     public String slotId() { return slotId; }
     public String proposedSlotId() { return proposedSlotId; }
     public SkillCoins price() { return price; }

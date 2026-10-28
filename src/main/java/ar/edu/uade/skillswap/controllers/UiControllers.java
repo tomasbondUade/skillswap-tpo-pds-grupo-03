@@ -19,7 +19,8 @@ public interface UiControllers {
 
     interface ContratacionController {
         List<Contratacion> listarContrataciones(String userId);
-        Contratacion solicitar(String userId, String publicacionId, String objetivo);
+        Contratacion solicitar(String userId, String publicacionId, String mensajeCliente,
+                               String objetivo, String franjaId);
         Contratacion avanzar(String userId, String contratacionId);
         Contratacion cancelar(String userId, String contratacionId);
     }
