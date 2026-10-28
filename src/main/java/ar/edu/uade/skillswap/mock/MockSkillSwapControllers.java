@@ -18,6 +18,8 @@ public final class MockSkillSwapControllers implements UiControllers,
     private final List<Notificacion> notificaciones = new ArrayList<>();
     private final Map<String, Perfil> perfilesCreados = new HashMap<>();
     private final Map<String, String> autores = new HashMap<>();
+    private final Map<String, String> franjasPropuestas = new HashMap<>();
+    private final Map<String, String> proponentes = new HashMap<>();
     private int saldo = 2480;
 
     public MockSkillSwapControllers() {
@@ -172,6 +174,93 @@ public final class MockSkillSwapControllers implements UiControllers,
             Contratacion n=new Contratacion(c.id(),c.titulo(),c.contraparte(),c.fecha(),c.precio(),next,
                     c.objetivo(),c.mensajeCliente(),c.franjaId()); contrataciones.set(i,n); return n;
         } throw new IllegalArgumentException("Contratación inexistente");
+    }
+
+
+    // Comportamiento de demostración: las reglas reales se ejecutan en Booking/BookingUseCases.
+    @Override public Contratacion aceptar(String userId, String id) {
+        return transition(id, EstadoContratacion.PENDIENTE, EstadoContratacion.ACEPTADA);
+    }
+
+    @Override public Contratacion rechazar(String userId, String id, String motivo) {
+        required(motivo, "Falta el motivo del rechazo");
+        return transition(id, EstadoContratacion.PENDIENTE, EstadoContratacion.RECHAZADA);
+    }
+
+    @Override public Contratacion pagar(String userId, String id) {
+        return transition(id, EstadoContratacion.ACEPTADA, EstadoContratacion.CONFIRMADA);
+    }
+
+    @Override public Contratacion cancelar(String userId, String id, String motivo) {
+        required(motivo, "Falta el motivo de la cancelación");
+        return cancelar(userId, id);
+    }
+
+    @Override public Contratacion proponerReprogramacion(String userId, String id, String nuevaFranjaId) {
+        required(nuevaFranjaId, "Falta la nueva franja");
+        Contratacion actual = findContract(id);
+        if (actual.estado() != EstadoContratacion.ACEPTADA && actual.estado() != EstadoContratacion.CONFIRMADA) {
+            throw new IllegalStateException("Solo se puede reprogramar antes de iniciar");
+        }
+        if (nuevaFranjaId.equals(actual.franjaId())) {
+            throw new IllegalArgumentException("La franja debe ser distinta");
+        }
+        if (franjasPropuestas.containsKey(id)) {
+            throw new IllegalStateException("Ya hay una propuesta pendiente");
+        }
+        franjasPropuestas.put(id, nuevaFranjaId);
+        proponentes.put(id, userId);
+        return actual;
+    }
+
+    @Override public Contratacion aceptarReprogramacion(String userId, String id) {
+        Contratacion actual = findContract(id);
+        String nuevaFranja = franjasPropuestas.get(id);
+        if (nuevaFranja == null) throw new IllegalStateException("No hay una propuesta pendiente");
+        if (Objects.equals(userId, proponentes.get(id))) {
+            throw new SecurityException("La otra parte debe aceptar la propuesta");
+        }
+        Contratacion updated = new Contratacion(actual.id(), actual.titulo(), actual.contraparte(),
+                actual.fecha(), actual.precio(), actual.estado(), actual.objetivo(),
+                actual.mensajeCliente(), nuevaFranja);
+        contrataciones.set(contrataciones.indexOf(actual), updated);
+        franjasPropuestas.remove(id);
+        proponentes.remove(id);
+        return updated;
+    }
+
+    @Override public Contratacion iniciar(String userId, String id) {
+        return transition(id, EstadoContratacion.CONFIRMADA, EstadoContratacion.EN_CURSO);
+    }
+
+    @Override public Contratacion completar(String userId, String id) {
+        return transition(id, EstadoContratacion.EN_CURSO, EstadoContratacion.COMPLETADA);
+    }
+
+    @Override public boolean puedeAvanzar(String userId, String id) {
+        EstadoContratacion estado = findContract(id).estado();
+        return estado != EstadoContratacion.COMPLETADA
+                && estado != EstadoContratacion.RECHAZADA
+                && estado != EstadoContratacion.CANCELADA;
+    }
+
+    private Contratacion transition(String id, EstadoContratacion expected, EstadoContratacion target) {
+        Contratacion actual = findContract(id);
+        if (actual.estado() != expected) throw new IllegalStateException("Transición no permitida");
+        Contratacion updated = new Contratacion(actual.id(), actual.titulo(), actual.contraparte(),
+                actual.fecha(), actual.precio(), target, actual.objetivo(),
+                actual.mensajeCliente(), actual.franjaId());
+        contrataciones.set(contrataciones.indexOf(actual), updated);
+        return updated;
+    }
+
+    private Contratacion findContract(String id) {
+        return contrataciones.stream().filter(c -> c.id().equals(id)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Contratación inexistente"));
+    }
+
+    private static void required(String value, String message) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
     }
 
     @Override public int consultarSaldo(String userId) { return saldo; }
