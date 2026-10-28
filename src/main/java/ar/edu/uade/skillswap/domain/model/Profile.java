@@ -3,6 +3,7 @@ package ar.edu.uade.skillswap.domain.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -11,6 +12,8 @@ import java.util.UUID;
 
 /** Perfil profesional: concentra datos, preferencias y reglas propias de su titular. */
 public final class Profile {
+    private record RatingIdentity(String bookingId, String authorUserId) {}
+
     private final String id;
     private final String userId;
     private String displayName;
@@ -108,8 +111,15 @@ public final class Profile {
     /** La reputación se deriva de calificaciones verificadas, no se asigna manualmente. */
     public void recalculateReputation(Collection<Rating> verifiedRatings) {
         Collection<Rating> ratings = verifiedRatings == null ? List.of() : verifiedRatings;
-        if (ratings.stream().anyMatch(rating -> rating == null || !userId.equals(rating.subjectUserId()))) {
-            throw new IllegalArgumentException("Todas las calificaciones deben pertenecer a este perfil");
+        Set<RatingIdentity> identities = new HashSet<>();
+        for (Rating rating : ratings) {
+            if (rating == null || !userId.equals(rating.subjectUserId())) {
+                throw new IllegalArgumentException("Todas las calificaciones deben pertenecer a este perfil");
+            }
+            RatingIdentity identity = new RatingIdentity(rating.bookingId(), rating.authorUserId());
+            if (!identities.add(identity)) {
+                throw new IllegalArgumentException("Una persona no puede calificar dos veces la misma contratación");
+            }
         }
         if (ratings.isEmpty()) {
             reputation = 0;
@@ -123,12 +133,23 @@ public final class Profile {
 
     public void deactivate(String actor) {
         requireActiveOwner(actor);
+        // La baja solo cambia el estado del perfil; las contrataciones tienen su propio ciclo de vida.
         active = false;
     }
 
+    public void activate(String actor) {
+        requireOwner(actor);
+        if (active) throw new IllegalStateException("El perfil ya está activo");
+        active = true;
+    }
+
     private void requireActiveOwner(String actor) {
-        if (!userId.equals(actor)) throw new SecurityException("Solo el titular puede modificar su perfil");
+        requireOwner(actor);
         if (!active) throw new IllegalStateException("El perfil está dado de baja");
+    }
+
+    private void requireOwner(String actor) {
+        if (!userId.equals(actor)) throw new SecurityException("Solo el titular puede modificar su perfil");
     }
 
     private static Set<String> normalizedValues(Collection<String> values, String label) {

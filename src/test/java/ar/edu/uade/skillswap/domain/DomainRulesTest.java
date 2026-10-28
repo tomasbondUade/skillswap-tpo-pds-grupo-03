@@ -59,6 +59,24 @@ class DomainRulesTest {
     }
 
     @Test
+    void availabilityReservationsCannotExceedCapacityOrReleaseAnEmptySlot() {
+        Publication publication = draft("provider", "Java", List.of("Java"));
+        publication.addAvailability("provider", slot(1));
+        publication.publish("provider");
+        String slotId = publication.availability().get(0).id();
+
+        publication.reserve(slotId);
+        assertEquals(0, publication.availability().get(0).remaining());
+        assertThrows(IllegalStateException.class, () -> publication.reserve(slotId));
+        assertEquals(1, publication.availability().get(0).reserved());
+
+        publication.releaseReservation(slotId);
+        assertEquals(1, publication.availability().get(0).remaining());
+        assertThrows(IllegalStateException.class, () -> publication.releaseReservation(slotId));
+        assertEquals(0, publication.availability().get(0).reserved());
+    }
+
+    @Test
     void bookingRequestMustTargetPublishedOfferOwnedBySomeoneElseAndAnAvailableSlot() {
         Publication publication = draft("provider", "Java", List.of("Java"));
         publication.addAvailability("provider", slot(1));
@@ -175,6 +193,49 @@ class DomainRulesTest {
     }
 
     @Test
+    void profileActivatesAndDeactivatesLogicallyOnlyForItsOwner() {
+        Profile profile = Profile.register("provider", "Mentora", "", "UTC",
+                Set.of("Java"), Set.of("Backend"), List.of());
+        Booking historicalBooking = booking(120);
+        historicalBooking.accept("provider");
+        List<?> bookingHistoryBeforeDeactivation = historicalBooking.history();
+
+        assertThrows(IllegalStateException.class, () -> profile.activate("provider"));
+        assertThrows(SecurityException.class, () -> profile.deactivate("other"));
+
+        profile.deactivate("provider");
+        assertFalse(profile.active());
+        assertEquals(BookingStatus.ACCEPTED, historicalBooking.status());
+        assertEquals(bookingHistoryBeforeDeactivation, historicalBooking.history());
+        assertThrows(IllegalStateException.class, () -> profile.deactivate("provider"));
+        assertThrows(SecurityException.class, () -> profile.activate("other"));
+
+        profile.activate("provider");
+        assertTrue(profile.active());
+        assertThrows(IllegalStateException.class, () -> profile.activate("provider"));
+    }
+
+    @Test
+    void profileRejectsInvalidIdentityAndDoesNotPartiallyApplyInvalidDetails() {
+        assertThrows(IllegalArgumentException.class, () -> Profile.register(" ", "Mentora", "", "UTC",
+                Set.of(), Set.of(), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider", "Mentora", "", "UTC",
+                Set.of(" "), Set.of(), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider", "Mentora", "", " ",
+                Set.of(), Set.of(), List.of()));
+
+        Profile profile = Profile.register("provider", "Mentora", "Bio", "UTC",
+                List.of(" Java ", "Java", "SQL"), List.of("Backend"), List.of());
+        assertEquals(Set.of("Java", "SQL"), profile.skills());
+        assertThrows(IllegalArgumentException.class, () -> profile.updateDetails(
+                "provider", "Nuevo nombre", "Nueva bio", "UTC-3", List.of("Java", " "), List.of("Backend")));
+        assertEquals("Mentora", profile.displayName());
+        assertEquals("Bio", profile.biography());
+        assertEquals("UTC", profile.timeZone());
+        assertEquals(Set.of("Java", "SQL"), profile.skills());
+    }
+
+    @Test
     void ratingCanOnlyBeCreatedByParticipantAfterCompletedBooking() {
         Booking booking = booking(10);
         assertThrows(IllegalStateException.class,
@@ -191,6 +252,34 @@ class DomainRulesTest {
         Rating rating = Rating.forCompletedBooking(booking, "buyer", 5, "  Excelente  ");
         assertEquals("provider", rating.subjectUserId());
         assertEquals("Excelente", rating.comment());
+    }
+
+    @Test
+    void profileRecalculatesReputationAndRejectsDuplicateRatings() {
+        Profile profile = Profile.register("provider", "Mentora", "", "UTC",
+                Set.of("Java"), Set.of("Backend"), List.of());
+        Rating first = Rating.restore("rating-1", "booking-1", "buyer-1", "provider",
+                5, "Muy clara", LocalDateTime.parse("2026-10-01T10:00:00"));
+        Rating second = Rating.restore("rating-2", "booking-2", "buyer-2", "provider",
+                4, "Útil", LocalDateTime.parse("2026-10-02T10:00:00"));
+
+        profile.recalculateReputation(List.of(first, second));
+
+        assertEquals(4.5, profile.reputation());
+        assertEquals(2, profile.ratingCount());
+
+        Rating duplicate = Rating.restore("rating-3", "booking-1", "buyer-1", "provider",
+                1, "Duplicada", LocalDateTime.parse("2026-10-03T10:00:00"));
+        assertThrows(IllegalArgumentException.class,
+                () -> profile.recalculateReputation(List.of(first, duplicate)));
+        assertEquals(4.5, profile.reputation(), "Un cálculo inválido no debe modificar la reputación");
+
+        profile.recalculateReputation(List.of());
+        assertEquals(0.0, profile.reputation());
+        assertEquals(0, profile.ratingCount());
+        assertThrows(IllegalArgumentException.class, () -> profile.recalculateReputation(List.of(
+                Rating.restore("rating-other", "booking-3", "buyer-3", "other-user",
+                        5, "Otra persona", LocalDateTime.now()))));
     }
 
     @Test
