@@ -64,6 +64,15 @@ src/main/java/ar/edu/uade/skillswap/
 
 El `pom.xml` declara Hibernate, MySQL y Flyway, pero todavía no hay adaptadores JPA, migraciones ni conexiones a esos servicios. La aplicación usa exclusivamente repositorios en memoria.
 
+
+## Integración en desarrollo (#33)
+
+La rama `feature/33-integration-report` añade un controller de calificaciones y un selector de usuario de demostración en Swing (Mateo, Ana y Lucía), para ejercitar roles de comprador y proveedor. Esta selección no reemplaza una autenticación real.
+
+**Estado de verificación:** estos cambios todavía requieren ejecución completa de `mvn clean test`, prueba visual del recorrido publicar → solicitar → aceptar → pagar → completar → calificar, integración del PR #61 y pruebas reales de MySQL/Flyway. No se dispone aún de un reporte de cobertura del 80% en Domain y Application.
+
+El detalle de la validación pendiente está en [docs/issue33-integracion-y-validacion.md](docs/issue33-integracion-y-validacion.md). El modelo StarUML y su PDF se entregan por separado; no se modifican en esta rama.
+
 ## Flujo de trabajo
 
 Los cambios se integran mediante pull requests hacia `main`. Consultá los issues del repositorio para el alcance y responsable de cada entrega.
