@@ -15,6 +15,17 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PresentationContractsTest {
     @Test
+    void losControllersDePerfilYPublicacionesDependenDePuertosSinDetallesDePersistencia() {
+        for (Class<?> controller : List.of(PerfilUiController.class, PublicacionUiController.class)) {
+            for (var field : controller.getDeclaredFields()) {
+                String packageName = field.getType().getPackageName();
+                assertFalse(packageName.startsWith("ar.edu.uade.skillswap.infrastructure"));
+                assertFalse(packageName.startsWith("jakarta.persistence"));
+            }
+        }
+    }
+
+    @Test
     void losDtosSoloContienenDatosSimplesYOtrosDtos() {
         for (Class<?> container : List.of(Models.class, BookingData.class, DiscoveryData.class,
                 ProfileData.class, PublicationData.class, RatingData.class, WalletData.class,

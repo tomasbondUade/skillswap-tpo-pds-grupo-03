@@ -9,6 +9,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class MockSkillSwapControllersTest {
     @Test
+    void mantieneLaCompatibilidadDelMockConLosNuevosContratos() {
+        var controllers = new MockSkillSwapControllers();
+        var profile = controllers.perfiles().crearPerfil("nuevo-usuario",
+                new ar.edu.uade.skillswap.model.Models.NuevoPerfil("Julieta", "Bio", "UTC",
+                        java.util.List.of("Java"), java.util.List.of(), java.util.Set.of(), java.util.List.of()));
+        assertEquals(profile, controllers.perfiles().verPerfil("nuevo-usuario"));
+        var draft = controllers.publicaciones().crearBorrador("nuevo-usuario",
+                new ar.edu.uade.skillswap.model.Models.DatosBorrador("Java", "Mentoría", "Tecnología",
+                        ar.edu.uade.skillswap.model.Models.Modalidad.REMOTA, 60, 2, 100,
+                        java.util.List.of("Java"), java.util.List.of()));
+        var edited = controllers.publicaciones().editarBorrador("nuevo-usuario", draft.id(),
+                new ar.edu.uade.skillswap.model.Models.EdicionBorrador("Java avanzado", "Bio", "Tecnología",
+                        ar.edu.uade.skillswap.model.Models.Modalidad.HIBRIDA, 60, 2, java.util.List.of("OO")));
+        assertEquals("Java avanzado", edited.titulo());
+        assertEquals(java.util.List.of(edited), controllers.publicaciones().listarPropias("nuevo-usuario"));
+    }
+
+    @Test
     void permiteBuscarPublicacionesPorTexto() {
         var controllers = new MockSkillSwapControllers();
 

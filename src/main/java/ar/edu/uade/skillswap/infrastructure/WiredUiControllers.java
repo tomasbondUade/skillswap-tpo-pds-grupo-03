@@ -6,20 +6,16 @@ import ar.edu.uade.skillswap.application.model.BookingData.BookingCommand;
 import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
 import ar.edu.uade.skillswap.application.model.BookingData.CancelCommand;
 import ar.edu.uade.skillswap.application.model.BookingData.RequestCommand;
-import ar.edu.uade.skillswap.application.model.ProfileData.AvailabilityInput;
-import ar.edu.uade.skillswap.application.model.PublicationData.ChangeStatusCommand;
-import ar.edu.uade.skillswap.application.model.PublicationData.CreateDraftCommand;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.controllers.UiControllers;
+import ar.edu.uade.skillswap.controllers.PerfilUiController;
+import ar.edu.uade.skillswap.controllers.PublicacionUiController;
 import ar.edu.uade.skillswap.controllers.mapper.UiModelMapper;
 import ar.edu.uade.skillswap.model.Models;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 public final class WiredUiControllers implements UiControllers,
         UiControllers.BusquedaController,
@@ -29,10 +25,22 @@ public final class WiredUiControllers implements UiControllers,
         UiControllers.NotificacionController,
         UiControllers.PerfilController {
 
-    private final SkillSwapApplicationWiring wiring = new SkillSwapApplicationWiring();
+    private final SkillSwapApplicationWiring wiring;
+    private final PerfilUiController profileController;
+    private final PublicacionUiController publicationController;
     private final UiModelMapper mapper = new UiModelMapper();
     private final UiOperationExecutor operations = new UiOperationExecutor();
     private final Map<String, Models.Publicacion> publicationCache = new HashMap<>();
+
+    public WiredUiControllers() {
+        this(new SkillSwapApplicationWiring());
+    }
+
+    public WiredUiControllers(SkillSwapApplicationWiring wiring) {
+        this.wiring = java.util.Objects.requireNonNull(wiring);
+        profileController = new PerfilUiController(wiring.profileService(), wiring.currentUserProvider(), operations);
+        publicationController = new PublicacionUiController(wiring.publicationService(), wiring.currentUserProvider(), operations);
+    }
 
     @Override
     public BusquedaController busqueda() {
@@ -96,52 +104,45 @@ public final class WiredUiControllers implements UiControllers,
 
     @Override
     public List<Models.Publicacion> listarPropias(String userId) {
-        return operations.execute(() -> {
-            return wiring.publicationService().listMyPublications().stream()
-                    .map(this::toPublicacion)
-                    .toList();
-        });
+        return publicationController.listarPropias(userId).stream().map(this::remember).toList();
     }
 
     @Override
     public Models.Publicacion crearBorrador(String userId, String titulo, String descripcion,
                                            String categoria, Models.Modalidad modalidad,
                                            int duracion, int precio) {
-        return operations.execute(() -> {
-            LocalDateTime startsAt = LocalDateTime.now().plusDays(1).withSecond(0).withNano(0);
-            var command = new CreateDraftCommand(
-                    titulo,
-                    descripcion,
-                    categoria,
-                    mapper.toModality(modalidad),
-                    duracion,
-                    6,
-                    precio,
-                    Set.of(),
-                    List.of(new AvailabilityInput(UUID.randomUUID().toString(), startsAt,
-                        startsAt.plusMinutes(duracion), 6))
-            );
-            return toPublicacion(wiring.publicationService().createDraft(command));
-        });
+        return remember(publicationController.crearBorrador(userId, titulo, descripcion,
+                categoria, modalidad, duracion, precio));
+    }
+
+    @Override
+    public Models.Publicacion crearBorrador(String userId, Models.DatosBorrador datos) {
+        return remember(publicationController.crearBorrador(userId, datos));
+    }
+
+    @Override
+    public Models.Publicacion editarBorrador(String userId, String publicacionId, Models.EdicionBorrador datos) {
+        return remember(publicationController.editarBorrador(userId, publicacionId, datos));
     }
 
     @Override
     public Models.Publicacion cambiarEstado(String userId, String publicacionId, Models.EstadoPublicacion estado) {
-        return operations.execute(() -> {
-            var command = new ChangeStatusCommand(
-                    publicacionId,
-                    mapper.toPublicationStatus(estado),
-                    "Cambio ejecutado desde la UI"
-            );
-            return toPublicacion(wiring.publicationService().changeStatus(command));
-        });
+        return remember(publicationController.cambiarEstado(userId, publicacionId, estado));
+    }
+
+    @Override
+    public Models.Perfil crearPerfil(String userId, Models.NuevoPerfil datos) {
+        return profileController.crearPerfil(userId, datos);
     }
 
     @Override
     public Models.Perfil verPerfil(String userId) {
-        return operations.execute(() -> {
-            return mapper.toPerfil(wiring.profileService().viewMyProfile(), "Software Engineer & Mentor", 52);
-        });
+        return profileController.verPerfil(userId);
+    }
+
+    private Models.Publicacion remember(Models.Publicacion publication) {
+        publicationCache.put(publication.id(), publication);
+        return publication;
     }
 
     @Override

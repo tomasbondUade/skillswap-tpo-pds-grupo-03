@@ -14,6 +14,33 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WiredUiControllersTest {
     @Test
+    void conectaLasNuevasOperacionesSinCambiarLaFachadaDeLaUi() {
+        var controllers = new WiredUiControllers();
+        var draft = controllers.publicaciones().crearBorrador("user-mateo", "Java",
+                "Mentoría", "Tecnología", Modalidad.REMOTA, 60, 100);
+        var updated = controllers.publicaciones().editarBorrador("user-mateo", draft.id(),
+                new Models.EdicionBorrador("Java avanzado", "Descripción editada", "Tecnología",
+                        Modalidad.HIBRIDA, 60, 6, java.util.List.of("Java")));
+        assertEquals("Java avanzado", updated.titulo());
+        assertEquals(updated, controllers.publicaciones().listarPropias("user-mateo").stream()
+                .filter(item -> item.id().equals(draft.id())).findFirst().orElseThrow());
+        var denied = assertThrows(PresentationException.class,
+                () -> controllers.publicaciones().listarPropias("otra-persona"));
+        assertEquals(Models.CodigoError.PERMISOS, denied.error().codigo());
+    }
+
+    @Test
+    void conectaLaCreacionDePerfilYTraduceElConflictoDelUsuarioDemo() {
+        var controllers = new WiredUiControllers();
+        var input = new Models.NuevoPerfil("Otro nombre", "Bio", "UTC", java.util.List.of(),
+                java.util.List.of(), java.util.Set.of(), java.util.List.of());
+        var conflict = assertThrows(PresentationException.class,
+                () -> controllers.perfiles().crearPerfil("user-mateo", input));
+        assertEquals(Models.CodigoError.CONFLICTO, conflict.error().codigo());
+        assertEquals("Mateo Silva", controllers.perfiles().verPerfil("user-mateo").nombre());
+    }
+
+    @Test
     void presentaLosErroresDeEntradaConUnContratoUniforme() {
         var controllers = new WiredUiControllers();
         var search = assertThrows(PresentationException.class, () -> controllers.busqueda().buscar(null));
