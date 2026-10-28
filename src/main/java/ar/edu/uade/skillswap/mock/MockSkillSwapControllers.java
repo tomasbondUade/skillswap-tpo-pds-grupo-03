@@ -16,6 +16,8 @@ public final class MockSkillSwapControllers implements UiControllers,
     private final List<Contratacion> contrataciones = new ArrayList<>();
     private final List<Movimiento> movimientos = new ArrayList<>();
     private final List<Notificacion> notificaciones = new ArrayList<>();
+    private final Map<String, Perfil> perfilesCreados = new HashMap<>();
+    private final Map<String, String> autores = new HashMap<>();
     private int saldo = 2480;
 
     public MockSkillSwapControllers() {
@@ -76,11 +78,51 @@ public final class MockSkillSwapControllers implements UiControllers,
 
     @Override public List<Publicacion> recomendar(String userId) { return buscar(new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream().limit(3).toList(); }
     @Override public List<String> categorias() { return List.of("Todas", "Tecnología", "Diseño", "Creatividad", "Negocios", "Productividad"); }
-    @Override public List<Publicacion> listarPropias(String userId) { return publicaciones.stream().filter(p -> p.proveedor().equals("Mateo Silva")).toList(); }
+    @Override public List<Publicacion> listarPropias(String userId) {
+        return publicaciones.stream().filter(p -> userId.equals(autores.get(p.id()))).toList();
+    }
 
     @Override public Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria, Modalidad modalidad, int duracion, int precio) {
         Publicacion p = new Publicacion(UUID.randomUUID().toString(), titulo, descripcion, categoria, modalidad, duracion, precio, 0, "Mateo Silva", List.of(categoria), EstadoPublicacion.BORRADOR, false);
-        publicaciones.add(p); return p;
+        publicaciones.add(p); autores.put(p.id(), userId); return p;
+    }
+
+    @Override public Publicacion crearBorrador(String userId, DatosBorrador datos) {
+        Objects.requireNonNull(datos, "Faltan los datos del borrador");
+        var slots = datos.disponibilidad().stream().map(slot -> new FranjaDisponibilidad(
+                slot.id() == null ? UUID.randomUUID().toString() : slot.id(),
+                slot.inicio(), slot.fin(), slot.cupos())).toList();
+        var publication = new Publicacion(UUID.randomUUID().toString(), datos.titulo(), datos.descripcion(),
+                datos.categoria(), datos.modalidad(), datos.duracionMinutos(), datos.precio(), 0,
+                userId, datos.etiquetas(), EstadoPublicacion.BORRADOR, false, slots);
+        publicaciones.add(publication);
+        autores.put(publication.id(), userId);
+        return publication;
+    }
+
+    @Override public Publicacion editarBorrador(String userId, String publicacionId, EdicionBorrador datos) {
+        Objects.requireNonNull(datos, "Faltan los datos para editar el borrador");
+        int index = indexOfPublication(publicacionId);
+        Publicacion previous = publicaciones.get(index);
+        if (!userId.equals(autores.get(publicacionId))) throw new SecurityException("No sos el autor");
+        if (previous.estado() != EstadoPublicacion.BORRADOR) throw new IllegalStateException("Solo se editan borradores");
+        var updated = new Publicacion(previous.id(), datos.titulo(), datos.descripcion(), datos.categoria(),
+                datos.modalidad(), datos.duracionMinutos(), previous.precio(), previous.reputacion(),
+                previous.proveedor(), datos.etiquetas(), previous.estado(), previous.destacada(),
+                previous.franjasDisponibles());
+        publicaciones.set(index, updated);
+        return updated;
+    }
+
+    @Override public Perfil crearPerfil(String userId, NuevoPerfil datos) {
+        Objects.requireNonNull(datos, "Faltan los datos del perfil");
+        if (perfilesCreados.containsKey(userId) || "user-mateo".equals(userId)) {
+            throw new IllegalStateException("El perfil ya existe");
+        }
+        var profile = new Perfil(userId, datos.nombre(), "Miembro de SkillSwap", datos.bio(),
+                datos.habilidades(), 0, 0, 0);
+        perfilesCreados.put(userId, profile);
+        return profile;
     }
 
     @Override public Publicacion cambiarEstado(String userId, String id, EstadoPublicacion estado) {
@@ -138,5 +180,7 @@ public final class MockSkillSwapControllers implements UiControllers,
     @Override public List<Notificacion> listarNotificaciones(String userId) { return List.copyOf(notificaciones); }
     @Override public void marcarLeida(String userId, String id) { for(int i=0;i<notificaciones.size();i++){Notificacion n=notificaciones.get(i);if(n.id().equals(id))notificaciones.set(i,new Notificacion(n.id(),n.titulo(),n.detalle(),n.fecha(),true,n.tipo()));} }
     @Override public void marcarTodasLeidas(String userId) { for(Notificacion n:List.copyOf(notificaciones)) marcarLeida(userId,n.id()); }
-    @Override public Perfil verPerfil(String userId) { return new Perfil(userId,"Mateo Silva","Software Engineer & Mentor","Construyo productos digitales y acompaño a personas que quieren crecer en tecnología.",List.of("Java","Clean Architecture","Mentoría","SQL","Diseño OO"),4.9,37,52); }
+    @Override public Perfil verPerfil(String userId) {
+        if (perfilesCreados.containsKey(userId)) return perfilesCreados.get(userId);
+        return new Perfil(userId,"Mateo Silva","Software Engineer & Mentor","Construyo productos digitales y acompaño a personas que quieren crecer en tecnología.",List.of("Java","Clean Architecture","Mentoría","SQL","Diseño OO"),4.9,37,52); }
 }
