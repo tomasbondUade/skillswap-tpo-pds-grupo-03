@@ -1,0 +1,12 @@
+
+# Archivos generados por Maven
+target/
+
+# Archivos de configuración locales
+.env
+.env.*
+!.env.example
+
+# Configuración de herramientas del sistema
+.DS_Store
+Thumbs.db
