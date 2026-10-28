@@ -4,13 +4,69 @@ import ar.edu.uade.skillswap.model.Models.FiltrosBusqueda;
 import ar.edu.uade.skillswap.model.Models.Modalidad;
 import ar.edu.uade.skillswap.model.Models.EstadoContratacion;
 import ar.edu.uade.skillswap.model.Models;
+import ar.edu.uade.skillswap.controllers.error.PresentationException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WiredUiControllersTest {
+    @Test
+    void presentaLosErroresDeEntradaConUnContratoUniforme() {
+        var controllers = new WiredUiControllers();
+        var search = assertThrows(PresentationException.class, () -> controllers.busqueda().buscar(null));
+        assertEquals(Models.CodigoError.VALIDACION, search.error().codigo());
+        var publication = assertThrows(PresentationException.class, () -> controllers.publicaciones()
+                .crearBorrador("user-mateo", "Mentoría", "Descripción", "Tecnología", null, 60, 100));
+        assertEquals(Models.CodigoError.VALIDACION, publication.error().codigo());
+        var wallet = assertThrows(PresentationException.class,
+                () -> controllers.wallet().acreditarDemo("user-mateo", -10));
+        assertEquals(Models.CodigoError.VALIDACION, wallet.error().codigo());
+    }
+
+    @Test
+    void presentaNoEncontradoEnOperacionesConYSinRetorno() {
+        var controllers = new WiredUiControllers();
+        var booking = assertThrows(PresentationException.class,
+                () -> controllers.contrataciones().avanzar("user-mateo", "inexistente"));
+        assertEquals(Models.CodigoError.NO_ENCONTRADO, booking.error().codigo());
+        var notification = assertThrows(PresentationException.class,
+                () -> controllers.notificaciones().marcarLeida("user-mateo", "inexistente"));
+        assertEquals(Models.CodigoError.NO_ENCONTRADO, notification.error().codigo());
+    }
+
+    @Test
+    void presentaErroresDePermisosSinCambiarLaContratacion() {
+        var controllers = new WiredUiControllers();
+        var publication = controllers.busqueda().buscar(
+                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream()
+                .filter(item -> !"Mateo Silva".equals(item.proveedor())).findFirst().orElseThrow();
+        var booking = controllers.contrataciones().solicitar("user-mateo", publication.id(),
+                "Hola", "Aprender", publication.franjasDisponibles().get(0).id());
+
+        var exception = assertThrows(PresentationException.class,
+                () -> controllers.contrataciones().avanzar("user-mateo", booking.id()));
+
+        assertEquals(Models.CodigoError.PERMISOS, exception.error().codigo());
+        assertEquals(EstadoContratacion.PENDIENTE, controllers.contrataciones()
+                .listarContrataciones("user-mateo").get(0).estado());
+    }
+
+    @Test
+    void presentaLasTransicionesInvalidasComoErroresDeEstado() {
+        var controllers = new WiredUiControllers();
+        var draft = controllers.publicaciones().crearBorrador("user-mateo", "Mentoría",
+                "Descripción", "Tecnología", Modalidad.REMOTA, 60, 100);
+
+        var exception = assertThrows(PresentationException.class,
+                () -> controllers.publicaciones().cambiarEstado("user-mateo", draft.id(),
+                        Models.EstadoPublicacion.PAUSADA));
+
+        assertEquals(Models.CodigoError.ESTADO, exception.error().codigo());
+    }
+
     @Test
     void usaLaWiringDeAplicacionParaBusquedaYPerfil() {
         var controllers = new WiredUiControllers();
