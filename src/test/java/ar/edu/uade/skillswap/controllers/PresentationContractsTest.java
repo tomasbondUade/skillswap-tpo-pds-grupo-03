@@ -16,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class PresentationContractsTest {
     @Test
     void losControllersDePerfilYPublicacionesDependenDePuertosSinDetallesDePersistencia() {
-        for (Class<?> controller : List.of(PerfilUiController.class, PublicacionUiController.class)) {
+        for (Class<?> controller : List.of(PerfilUiController.class, PublicacionUiController.class,
+                ContratacionUiController.class)) {
             for (var field : controller.getDeclaredFields()) {
                 String packageName = field.getType().getPackageName();
                 assertFalse(packageName.startsWith("ar.edu.uade.skillswap.infrastructure"));
