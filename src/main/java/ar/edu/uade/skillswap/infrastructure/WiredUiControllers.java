@@ -4,6 +4,7 @@ import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.controllers.UiControllers;
 import ar.edu.uade.skillswap.controllers.ContratacionUiController;
+import ar.edu.uade.skillswap.controllers.CalificacionUiController;
 import ar.edu.uade.skillswap.controllers.PerfilUiController;
 import ar.edu.uade.skillswap.controllers.PublicacionUiController;
 import ar.edu.uade.skillswap.controllers.mapper.UiModelMapper;
@@ -18,10 +19,12 @@ public final class WiredUiControllers implements UiControllers,
         UiControllers.PublicacionController,
         UiControllers.WalletController,
         UiControllers.NotificacionController,
-        UiControllers.PerfilController {
+        UiControllers.PerfilController,
+        UiControllers.SesionDemoController {
 
     private final SkillSwapApplicationWiring wiring;
     private final PerfilUiController profileController;
+    private final CalificacionUiController ratingController;
     private final ContratacionUiController bookingController;
     private final PublicacionUiController publicationController;
     private final UiModelMapper mapper = new UiModelMapper();
@@ -35,6 +38,7 @@ public final class WiredUiControllers implements UiControllers,
     public WiredUiControllers(SkillSwapApplicationWiring wiring) {
         this.wiring = java.util.Objects.requireNonNull(wiring);
         profileController = new PerfilUiController(wiring.profileService(), wiring.currentUserProvider(), operations);
+        ratingController = new CalificacionUiController(wiring.ratingService(), wiring.currentUserProvider(), operations);
         bookingController = new ContratacionUiController(wiring.bookingService(),
                 wiring.currentUserProvider(), operations, this::toContratacion);
         publicationController = new PublicacionUiController(wiring.publicationService(), wiring.currentUserProvider(), operations);
@@ -53,6 +57,20 @@ public final class WiredUiControllers implements UiControllers,
     @Override
     public ContratacionController contrataciones() {
         return bookingController;
+    }
+
+    @Override
+    public CalificacionController calificaciones() { return ratingController; }
+
+    @Override
+    public SesionDemoController sesionDemo() { return this; }
+
+    @Override
+    public String usuarioActual() { return wiring.currentUserProvider().currentUserId(); }
+
+    @Override
+    public void cambiarUsuario(String userId) {
+        ((DemoCurrentUserProvider) wiring.currentUserProvider()).switchTo(userId);
     }
 
     @Override
