@@ -106,6 +106,7 @@ public final class JpaBookingRepository extends JpaRepositorySupport
         existing.setBuyerUserId(booking.buyerUserId());
         existing.setProviderUserId(booking.providerUserId());
         existing.setObjective(booking.objective());
+        existing.setClientMessage(booking.clientMessage());
         existing.setSlotId(booking.slotId());
         existing.setProposedSlotId(booking.proposedSlotId());
         existing.setBuyerAcceptedReschedule(
