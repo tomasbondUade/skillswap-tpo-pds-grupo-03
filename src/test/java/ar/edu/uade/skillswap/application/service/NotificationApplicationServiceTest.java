@@ -53,6 +53,18 @@ class NotificationApplicationServiceTest {
                     ? items.stream().filter(item -> item.id().equals(id)).findFirst()
                     : Optional.empty();
         }
+	
+	@Override
+public void save(
+        ar.edu.uade.skillswap.application.model.NotificationMessage notification) {
+    items.add(new NotificationView(
+            "test-" + (items.size() + 1),
+            notification.title(),
+            notification.detail(),
+            LocalDateTime.now(),
+            false,
+            notification.type()));
+}
         @Override public void markRead(String id, String userId) {
             for (int i = 0; i < items.size(); i++) {
                 NotificationView item = items.get(i);

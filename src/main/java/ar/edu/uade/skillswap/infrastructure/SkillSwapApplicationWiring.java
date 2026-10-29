@@ -15,6 +15,12 @@ import ar.edu.uade.skillswap.application.service.ProfileApplicationService;
 import ar.edu.uade.skillswap.application.service.PublicationApplicationService;
 import ar.edu.uade.skillswap.application.service.RatingApplicationService;
 import ar.edu.uade.skillswap.application.service.WalletApplicationService;
+import ar.edu.uade.skillswap.infrastructure.identity.IdentityProviderAdapter;
+import ar.edu.uade.skillswap.infrastructure.identity.MockIdentityClient;
+import ar.edu.uade.skillswap.infrastructure.notification.NotificationFactory;
+import ar.edu.uade.skillswap.infrastructure.notification.RatingNotificationEventPublisher;
+import ar.edu.uade.skillswap.infrastructure.notification.email.MockEmailClient;
+import ar.edu.uade.skillswap.infrastructure.notification.push.MockPushClient;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
@@ -29,6 +35,7 @@ import ar.edu.uade.skillswap.domain.policy.StandardRefundPolicy;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,27 +45,51 @@ public final class SkillSwapApplicationWiring {
     private final WalletRepository wallets = new InMemoryWalletRepository();
     private final InMemoryNotificationRepository notifications = new InMemoryNotificationRepository();
     private final InMemoryDomainEventPublisher events = new InMemoryDomainEventPublisher();
-    private final NotificationEventObserver notificationObserver =
-            new NotificationEventObserver(new InAppNotificationGateway(notifications));
+    private final NotificationEventObserver notificationObserver;
+    private final RatingNotificationEventPublisher ratingNotifications;
     private final RatingRepository ratings = new InMemoryRatingRepository();
-    private final ProfileRepository profiles = new InMemoryProfileRepository();
+    private final ProfileRepository profiles;
     private final PublicationRepository publications = new InMemoryPublicationRepository();
-    private final CurrentUserProvider currentUser = new StaticCurrentUserProvider("user-mateo");
+    private final CurrentUserProvider currentUser;
     private final TransactionManager transactions = new SynchronousTransactionManager();
     private final RecommendationStrategy recommendationStrategy = new SkillAffinityStrategy();
     private final RefundPolicy refundPolicy = new StandardRefundPolicy();
 
-    private final ProfileApplicationService profileService = new ProfileApplicationService(profiles, currentUser, transactions);
-    private final PublicationApplicationService publicationService = new PublicationApplicationService(publications, currentUser, transactions);
-    private final DiscoveryApplicationService discoveryService = new DiscoveryApplicationService(publications, profiles, currentUser, recommendationStrategy);
-    private final BookingApplicationService bookingService = new BookingApplicationService(
-            publications, bookings, wallets, refundPolicy, currentUser, transactions, events);
-    private final RatingApplicationService ratingService = new RatingApplicationService(
-            bookings, ratings, profiles, currentUser, transactions, events);
-    private final WalletApplicationService walletService = new WalletApplicationService(wallets, currentUser, transactions);
-    private final NotificationApplicationService notificationService = new NotificationApplicationService(notifications, currentUser, transactions);
+    private final ProfileApplicationService profileService;
+    private final PublicationApplicationService publicationService;
+    private final DiscoveryApplicationService discoveryService;
+    private final BookingApplicationService bookingService;
+    private final RatingApplicationService ratingService;
+    private final WalletApplicationService walletService;
+    private final NotificationApplicationService notificationService;
 
     public SkillSwapApplicationWiring() {
+        this(new MockIdentityClient("user-mateo"), new MockEmailClient(), new MockPushClient());
+    }
+
+    public SkillSwapApplicationWiring(MockIdentityClient identityClient,
+                                      MockEmailClient emailClient, MockPushClient pushClient) {
+        this(identityClient, emailClient, pushClient, new InMemoryProfileRepository());
+    }
+
+    public SkillSwapApplicationWiring(MockIdentityClient identityClient,
+                                      MockEmailClient emailClient, MockPushClient pushClient,
+                                      ProfileRepository profiles) {
+        this.profiles = Objects.requireNonNull(profiles);
+        currentUser = new IdentityProviderAdapter(identityClient);
+        NotificationFactory factory = new NotificationFactory(notifications, emailClient, pushClient);
+        notificationObserver = new NotificationEventObserver(profiles, factory);
+        ratingNotifications = new RatingNotificationEventPublisher(profiles, factory);
+
+        profileService = new ProfileApplicationService(profiles, currentUser, transactions);
+        publicationService = new PublicationApplicationService(publications, currentUser, transactions);
+        discoveryService = new DiscoveryApplicationService(publications, profiles, currentUser, recommendationStrategy);
+        bookingService = new BookingApplicationService(bookings, publications, wallets,
+                currentUser, transactions, refundPolicy, events);
+        ratingService = new RatingApplicationService(bookings, ratings, profiles, currentUser, transactions, events);
+        walletService = new WalletApplicationService(wallets, currentUser, transactions);
+        notificationService = new NotificationApplicationService(notifications, currentUser, transactions);
+
         subscribeNotifications();
         seedDemoData();
     }
@@ -66,8 +97,9 @@ public final class SkillSwapApplicationWiring {
     private void subscribeNotifications() {
         List.of("booking.requested", "booking.accepted", "booking.rejected", "booking.paid",
                 "booking.reschedule-proposed", "booking.reschedule-accepted", "booking.rescheduled",
-                "booking.cancelled", "booking.started", "booking.completed", "rating.submitted")
+                "booking.cancelled", "booking.started", "booking.completed")
                 .forEach(eventName -> events.subscribe(eventName, notificationObserver::onEvent));
+        events.subscribe("rating.submitted", ratingNotifications::publish);
     }
 
     private void seedDemoData() {
@@ -83,10 +115,11 @@ public final class SkillSwapApplicationWiring {
                 List.of()
             ));
         }
-        seedProfile("mentor-ana", "Ana García", List.of("Entrevistas", "Backend"));
-        seedProfile("mentor-lu", "Lucía Pérez", List.of("UX", "Diseño"));
+        seedProfile("mentor-ana", "Ana García", List.of("Entrevistas", "Backend"),
+                Set.of(NotificationChannelType.EMAIL, NotificationChannelType.PUSH, NotificationChannelType.IN_APP));
+        seedProfile("mentor-lu", "Lucía Pérez", List.of("UX", "Diseño"),
+                Set.of(NotificationChannelType.IN_APP));
         wallets.save(Wallet.open(currentUser.currentUserId(), 2480));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
         notifications.save(new NotificationView(
                 "welcome-notification",
                 "Bienvenido a SkillSwap",
@@ -129,11 +162,12 @@ public final class SkillSwapApplicationWiring {
         );
     }
 
-    private void seedProfile(String userId, String displayName, List<String> skills) {
+    private void seedProfile(String userId, String displayName, List<String> skills,
+                             Set<NotificationChannelType> channels) {
         if (profiles.findByUserId(userId).isEmpty()) {
             profiles.save(Profile.register(userId, displayName,
                     "Mentor de la comunidad SkillSwap.", "America/Argentina/Buenos_Aires",
-                    skills, List.of(), Set.of(NotificationChannelType.IN_APP), List.of()));
+                    skills, List.of(), channels, List.of()));
         }
     }
 
