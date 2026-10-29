@@ -34,6 +34,7 @@ public final class BookingMapper {
         entity.setBuyerUserId(booking.buyerUserId());
         entity.setProviderUserId(booking.providerUserId());
         entity.setObjective(booking.objective());
+        entity.setClientMessage(booking.clientMessage());
         entity.setSlotId(booking.slotId());
         entity.setProposedSlotId(booking.proposedSlotId());
         entity.setBuyerAcceptedReschedule(booking.buyerAcceptedReschedule());
@@ -83,6 +84,7 @@ public final class BookingMapper {
                 entity.getBuyerUserId(),
                 entity.getProviderUserId(),
                 entity.getObjective(),
+                entity.getClientMessage(),
                 entity.getSlotId(),
                 new SkillCoins(entity.getPrice()),
                 switch (status) {

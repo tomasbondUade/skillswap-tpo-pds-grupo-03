@@ -36,6 +36,10 @@ public class BookingEntity {
     @Column(name = "objective", length = 1000, nullable = false)
     private String objective;
 
+    /** Nullable only to support rows created before V2; the domain normalizes null to empty. */
+    @Column(name = "client_message", columnDefinition = "TEXT")
+    private String clientMessage;
+
     @Column(name = "slot_id", length = 100, nullable = false)
     private String slotId;
 
@@ -78,6 +82,7 @@ public class BookingEntity {
     public String getBuyerUserId() { return buyerUserId; }
     public String getProviderUserId() { return providerUserId; }
     public String getObjective() { return objective; }
+    public String getClientMessage() { return clientMessage; }
     public String getSlotId() { return slotId; }
     public String getProposedSlotId() { return proposedSlotId; }
     public boolean isBuyerAcceptedReschedule() { return buyerAcceptedReschedule; }
@@ -94,6 +99,7 @@ public class BookingEntity {
     public void setBuyerUserId(String buyerUserId) { this.buyerUserId = buyerUserId; }
     public void setProviderUserId(String providerUserId) { this.providerUserId = providerUserId; }
     public void setObjective(String objective) { this.objective = objective; }
+    public void setClientMessage(String clientMessage) { this.clientMessage = clientMessage; }
     public void setSlotId(String slotId) { this.slotId = slotId; }
     public void setProposedSlotId(String proposedSlotId) { this.proposedSlotId = proposedSlotId; }
     public void setBuyerAcceptedReschedule(boolean accepted) { this.buyerAcceptedReschedule = accepted; }
