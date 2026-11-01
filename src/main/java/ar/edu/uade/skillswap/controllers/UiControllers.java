@@ -3,6 +3,11 @@ package ar.edu.uade.skillswap.controllers;
 import ar.edu.uade.skillswap.model.Models.*;
 import java.util.List;
 
+/**
+ * UI contracts: success results contain only simple view models.
+ * Real implementations translate failures to PresentationException, whose error()
+ * contains the stable presentation code and the user-facing message.
+ */
 public interface UiControllers {
     interface BusquedaController {
         List<Publicacion> buscar(FiltrosBusqueda filtros);

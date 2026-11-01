@@ -11,9 +11,27 @@ public final class Models {
     public enum EstadoPublicacion { BORRADOR, PUBLICADA, PAUSADA, CERRADA, CANCELADA }
     public enum EstadoContratacion { PENDIENTE, ACEPTADA, CONFIRMADA, EN_CURSO, COMPLETADA, RECHAZADA, CANCELADA }
 
+    public enum CodigoError {
+        VALIDACION, NO_AUTENTICADO, NO_ENCONTRADO, PERMISOS, ESTADO,
+        CONFLICTO, PERSISTENCIA, INESPERADO
+    }
+
+    public record ErrorPresentacion(CodigoError codigo, String mensaje) {
+        public ErrorPresentacion {
+            Objects.requireNonNull(codigo, "Falta el código del error");
+            if (mensaje == null || mensaje.isBlank()) {
+                throw new IllegalArgumentException("Falta el mensaje del error");
+            }
+        }
+    }
+
     public record Perfil(String id, String nombre, String rol, String bio,
                          List<String> habilidades, double reputacion,
-                         int resenas, int proyectosCompletados) {}
+                         int resenas, int proyectosCompletados) {
+        public Perfil {
+            habilidades = List.copyOf(habilidades == null ? List.of() : habilidades);
+        }
+    }
 
     public record FranjaDisponibilidad(String id, LocalDateTime inicio,
                                        LocalDateTime fin, int cuposDisponibles) {
