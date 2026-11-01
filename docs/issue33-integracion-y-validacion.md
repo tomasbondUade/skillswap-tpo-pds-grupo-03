@@ -10,7 +10,7 @@ Componer los controllers, los casos de uso y los adapters; completar el recorrid
 - Swing agrega selección de usuario demo y un diálogo para calificar contrataciones completadas.
 
 ## Validación
-En el head previo `2cd5336` se ejecutó `mvn clean test`: 124 pruebas, 0 fallos y 0 errores. Esta revisión corrige los indicadores de identidad y saldo; hay que repetir la suite sobre el nuevo head antes de darlo por validado. La prueba manual del recorrido Swing y la medición de cobertura siguen pendientes.
+Después de actualizar esta rama sobre el PR #64 se ejecutó `mvn clean test` sobre el head `23416c3`: 124 pruebas, 0 fallos y 0 errores. La vista ahora refresca la identidad activa y el saldo del encabezado cuando cambia el usuario o se vuelve a renderizar una pantalla. La prueba manual del recorrido Swing y la medición de cobertura siguen pendientes.
 
 La rama depende de #64, #63 y #62. El PR #61, que incorpora Adapter, Simple Factory y JPA, todavía no está fusionado; hay que integrar y resolver incompatibilidades antes de certificar la aceptación. No afirmar que MySQL, concurrencia o el recorrido visual estén verificados.
 
