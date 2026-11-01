@@ -9,8 +9,10 @@ Componer los controllers, los casos de uso y los adapters; completar el recorrid
 - WiredUiControllers incorpora calificaciones y selección de identidad; MockSkillSwapControllers mantiene el contrato.
 - Swing agrega selección de usuario demo y un diálogo para calificar contrataciones completadas.
 
-## Validación pendiente
-La rama depende de #64, #63 y #62. El PR #61, que incorpora Adapter, Simple Factory y JPA, todavía no está fusionado; hay que integrar y resolver incompatibilidades antes de certificar la aceptación. No se ha ejecutado `mvn clean test` ni se ha medido cobertura en esta rama. No afirmar que MySQL, concurrencia o el recorrido visual estén verificados.
+## Validación
+En el head previo `2cd5336` se ejecutó `mvn clean test`: 124 pruebas, 0 fallos y 0 errores. Esta revisión corrige los indicadores de identidad y saldo; hay que repetir la suite sobre el nuevo head antes de darlo por validado. La prueba manual del recorrido Swing y la medición de cobertura siguen pendientes.
+
+La rama depende de #64, #63 y #62. El PR #61, que incorpora Adapter, Simple Factory y JPA, todavía no está fusionado; hay que integrar y resolver incompatibilidades antes de certificar la aceptación. No afirmar que MySQL, concurrencia o el recorrido visual estén verificados.
 
 ## Matriz de aceptación
 | Criterio | Estado |
