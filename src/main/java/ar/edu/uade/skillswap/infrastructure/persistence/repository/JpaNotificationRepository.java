@@ -58,7 +58,7 @@ public final class JpaNotificationRepository extends JpaRepositorySupport
                 .map(JpaNotificationRepository::toView));
     }
 
-	
+
 @Override
 public void save(NotificationMessage notification) {
     Objects.requireNonNull(notification, "Falta la notificación");

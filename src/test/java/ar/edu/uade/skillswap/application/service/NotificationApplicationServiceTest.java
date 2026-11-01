@@ -53,7 +53,7 @@ class NotificationApplicationServiceTest {
                     ? items.stream().filter(item -> item.id().equals(id)).findFirst()
                     : Optional.empty();
         }
-	
+
 	@Override
 public void save(
         ar.edu.uade.skillswap.application.model.NotificationMessage notification) {
