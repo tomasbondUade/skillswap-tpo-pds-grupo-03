@@ -63,10 +63,9 @@ Validación: `mvn clean test`, 119 pruebas sin fallos ni errores. La combinació
 con el PR #61 pasa 134 pruebas. También se comprobó el inicio de Swing mediante
 el modo de captura de la aplicación.
 
-La rama parte de `feature/27-presentation-dtos`. Su PR apunta a esa rama para mostrar
-solamente el cambio de la #28 mientras se revisa el PR #62. El controller recibe el
-proveedor de identidad del wiring, por lo que utiliza el adapter de identidad al
-combinarlo con el PR #61.
+La rama se actualizó sobre `main` después de la integración del PR #62, y el PR #63
+ahora apunta a `main`. El controller recibe el proveedor de identidad del wiring;
+al integrar el PR #61, ese puerto se conectará con su adapter de identidad.
 
 Se mantiene la interfaz gráfica entregada. La incorporación de controles visuales
 para las nuevas operaciones pertenece al ensamblado final de la UI de la #33.
