@@ -12,7 +12,9 @@ Componer los controllers, los casos de uso y los adapters; completar el recorrid
 ## Validación
 Después de actualizar esta rama sobre el PR #64 se ejecutó `mvn clean test` sobre el head `23416c3`: 124 pruebas, 0 fallos y 0 errores. La vista ahora refresca la identidad activa y el saldo del encabezado cuando cambia el usuario o se vuelve a renderizar una pantalla. La prueba manual del recorrido Swing y la medición de cobertura siguen pendientes.
 
-La rama depende de #64, #63 y #62. El PR #61, que incorpora Adapter, Simple Factory y JPA, todavía no está fusionado; hay que integrar y resolver incompatibilidades antes de certificar la aceptación. No afirmar que MySQL, concurrencia o el recorrido visual estén verificados.
+Reverificación local del 02/11/2026 sobre `bb6a7a0`: `mvn clean test`, 124 pruebas, 0 fallos, 0 errores y 0 omitidas. Los cambios de esta revisión son documentales (README, guion y estado de integración); no modifican Java ni certifican el recorrido visual. GitHub no reportaba checks para ese head de #65; no confundir la suite local con los checks requeridos contra `main`.
+
+La rama depende de #64 y #63; #62 ya está integrado en `main`. El PR #61, que incorpora Adapter, Simple Factory y JPA, todavía no está fusionado; hay que integrar y resolver incompatibilidades antes de certificar la aceptación. Los checks contra `main` deben ejecutarse después de actualizar la base, una vez integrados #63 y #64. No afirmar que MySQL, rollback, concurrencia o el recorrido visual estén verificados. El PR permanece en Draft.
 
 ## Matriz de aceptación
 | Criterio | Estado |

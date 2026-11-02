@@ -41,7 +41,7 @@ Se abre la ventana **SkillSwap · Mock UI Kit**. Para cerrarla, cerrá la ventan
 
 ## Recorrido de demostración
 
-El guion detallado está en [`docs/guion-demo.md`](docs/guion-demo.md). Describe los flujos conectados y las limitaciones que siguen pendientes, incluida la identidad fija de demo y la ausencia de persistencia real.
+El guion detallado está en [`docs/guion-demo.md`](docs/guion-demo.md). Describe los flujos conectados, el selector de identidad de demo y las limitaciones de la persistencia en memoria.
 
 ## Diseño y defensa
 
@@ -69,7 +69,7 @@ El `pom.xml` declara Hibernate, MySQL y Flyway, pero todavía no hay adaptadores
 
 La rama `feature/33-integration-report` añade un controller de calificaciones y un selector de usuario de demostración en Swing (Mateo, Ana y Lucía), para ejercitar roles de comprador y proveedor. Esta selección no reemplaza una autenticación real.
 
-**Estado de verificación:** estos cambios todavía requieren ejecución completa de `mvn clean test`, prueba visual del recorrido publicar → solicitar → aceptar → pagar → completar → calificar, integración del PR #61 y pruebas reales de MySQL/Flyway. No se dispone aún de un reporte de cobertura del 80% en Domain y Application.
+**Estado de verificación:** `mvn clean test` ya se ejecutó sobre `23416c3`, con 124 pruebas, 0 fallos y 0 errores; `bb6a7a0` solo actualizó ese registro documental. Siguen pendientes la prueba visual del recorrido publicar → solicitar → aceptar → pagar → completar → calificar, la integración del PR #61, MySQL/Flyway, rollback y concurrencia. No se dispone aún de un reporte de cobertura del 80% en Domain y Application. Los checks contra `main` deberán repetirse cuando se integren #63 y #64; esta rama permanece en Draft.
 
 El detalle de la validación pendiente está en [docs/issue33-integracion-y-validacion.md](docs/issue33-integracion-y-validacion.md). El modelo StarUML y su PDF se entregan por separado; no se modifican en esta rama.
 
