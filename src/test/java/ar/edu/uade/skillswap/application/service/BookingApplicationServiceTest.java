@@ -9,6 +9,8 @@ import ar.edu.uade.skillswap.application.model.BookingData.RequestCommand;
 import ar.edu.uade.skillswap.application.model.BookingData.RejectCommand;
 import ar.edu.uade.skillswap.application.model.BookingData.RescheduleCommand;
 import ar.edu.uade.skillswap.application.event.DomainEvent;
+import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
+import ar.edu.uade.skillswap.application.model.PageResult;
 import ar.edu.uade.skillswap.application.port.out.BookingRepository;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
 import ar.edu.uade.skillswap.application.port.out.TransactionManager;
@@ -23,9 +25,12 @@ import ar.edu.uade.skillswap.domain.model.Wallet;
 import ar.edu.uade.skillswap.domain.policy.StandardRefundPolicy;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 class BookingApplicationServiceTest {
@@ -339,7 +344,7 @@ class BookingApplicationServiceTest {
 
     private static final class ImmediateTransactionManager implements TransactionManager {
         @Override
-        public <T> T required(java.util.function.Supplier<T> work) {
+        public <T> T required(Supplier<T> work) {
             return work.get();
         }
     }
@@ -371,10 +376,10 @@ class BookingApplicationServiceTest {
             return items.stream().filter(item -> item.status() != null).toList();
         }
 
+
         @Override
-        public ar.edu.uade.skillswap.application.model.PageResult<Publication> searchPublished(
-                ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery query) {
-            return new ar.edu.uade.skillswap.application.model.PageResult<>(List.of(), query.page(), query.size(), 0);
+        public PageResult<Publication> searchPublished(SearchQuery query) {
+            return new PageResult<>(List.of(), query.page().page(), query.page().size(), 0);
         }
 
         @Override
@@ -412,7 +417,7 @@ class BookingApplicationServiceTest {
     }
 
     private static final class InMemoryWallets implements WalletRepository {
-        private final java.util.Map<String, Wallet> items = new java.util.HashMap<>();
+        private final Map<String, Wallet> items = new HashMap<>();
 
         @Override public Optional<Wallet> findByUserId(String userId) { return Optional.ofNullable(items.get(userId)); }
         @Override public Optional<Wallet> findByUserIdForUpdate(String userId) { return findByUserId(userId); }

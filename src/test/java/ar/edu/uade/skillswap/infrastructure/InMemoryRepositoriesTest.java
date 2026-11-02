@@ -24,7 +24,7 @@ class InMemoryRepositoriesTest {
 
         assertEquals("Ana", profiles.findByUserId("user-1").orElseThrow().displayName());
 
-        var publications = new InMemoryPublicationRepository();
+        var publications = new InMemoryPublicationRepository(profiles);
         Publication publication = Publication.builder("user-1")
                 .title("Java para principiantes")
                 .description("Mentoría")
@@ -41,7 +41,7 @@ class InMemoryRepositoriesTest {
         assertEquals(publication.id(), publications.findById(publication.id()).orElseThrow().id());
         assertEquals(1, publications.findByAuthorUserId("user-1").size());
 
-        PageResult<Publication> result = publications.searchPublished(new SearchQuery("Java", null, null, null, null, null, null, 0, 10));
+        PageResult<Publication> result = publications.searchPublished(new SearchQuery("Java", null, null, null, null, null, null, null));
         assertEquals(1L, result.totalElements());
         assertTrue(result.items().stream().anyMatch(item -> item.title().equals("Java para principiantes")));
     }
@@ -49,5 +49,16 @@ class InMemoryRepositoriesTest {
     private static AvailabilitySlot slot() {
         LocalDateTime startsAt = LocalDateTime.now().plusDays(2);
         return AvailabilitySlot.of(startsAt, startsAt.plusHours(1), 2);
+    }
+
+    @Test
+    void buscaVariosPerfilesEnLoteOmitiendoInexistentesYRepetidos() {
+        var profiles = new InMemoryProfileRepository();
+        profiles.save(Profile.register("ana", "Ana", "", "UTC", Set.of(), Set.of(), Set.of()));
+        profiles.save(Profile.register("beto", "Beto", "", "UTC", Set.of(), Set.of(), Set.of()));
+
+        List<Profile> found = profiles.findByUserIds(List.of("ana", "ana", "nadie", "beto"));
+
+        assertEquals(List.of("ana", "beto"), found.stream().map(Profile::userId).toList());
     }
 }

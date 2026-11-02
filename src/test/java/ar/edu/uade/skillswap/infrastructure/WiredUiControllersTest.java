@@ -5,6 +5,7 @@ import ar.edu.uade.skillswap.model.Models.Modalidad;
 import ar.edu.uade.skillswap.model.Models.EstadoContratacion;
 import ar.edu.uade.skillswap.model.Models;
 import ar.edu.uade.skillswap.controllers.error.PresentationException;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -79,6 +80,30 @@ class WiredUiControllersTest {
 
         var perfil = controllers.perfiles().verPerfil("user-mateo");
         assertFalse(perfil.habilidades().isEmpty());
+    }
+
+    @Test
+    void laBusquedaMuestraElNombreYLaReputacionRealesDelAutor() {
+        var controllers = new WiredUiControllers();
+
+        var resultados = controllers.busqueda().buscar(
+                new FiltrosBusqueda("entrevistas", "Todas", null, 0, "Relevancia"));
+
+        assertEquals(1, resultados.size());
+        assertEquals("Ana García", resultados.get(0).proveedor());
+        assertEquals(0.0, resultados.get(0).reputacion());
+    }
+
+    @Test
+    void lasRecomendacionesMuestranElNombreYLaReputacionRealesDelAutor() {
+        var controllers = new WiredUiControllers();
+
+        var recomendaciones = controllers.busqueda().recomendar("user-mateo");
+
+        assertFalse(recomendaciones.isEmpty());
+        assertTrue(recomendaciones.stream().allMatch(p ->
+                Set.of("Mateo Silva", "Ana García", "Lucía Pérez").contains(p.proveedor())));
+        assertTrue(recomendaciones.stream().allMatch(p -> p.reputacion() == 0.0));
     }
 
         @Test

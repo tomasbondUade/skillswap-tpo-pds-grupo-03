@@ -2,6 +2,7 @@ package ar.edu.uade.skillswap.application.service;
 
 import ar.edu.uade.skillswap.application.error.ApplicationErrorCode;
 import ar.edu.uade.skillswap.application.error.ApplicationException;
+import ar.edu.uade.skillswap.application.event.DomainEvent;
 import ar.edu.uade.skillswap.application.model.RatingData.SubmitCommand;
 import ar.edu.uade.skillswap.application.port.out.BookingRepository;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
@@ -15,9 +16,11 @@ import ar.edu.uade.skillswap.domain.model.Rating;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -79,7 +82,7 @@ class RatingApplicationServiceTest {
         private final List<Rating> records = new ArrayList<>();
         private final RatingStore ratings = new RatingStore();
         private final ImmediateTransactionManager transactions = new ImmediateTransactionManager();
-        private final List<ar.edu.uade.skillswap.application.event.DomainEvent> events = new ArrayList<>();
+        private final List<DomainEvent> events = new ArrayList<>();
         private String actor = "buyer";
         private final RatingApplicationService service;
 
@@ -113,6 +116,9 @@ class RatingApplicationServiceTest {
             }
             @Override public Optional<Profile> findByUserIdForUpdate(String userId) {
                 return findByUserId(userId);
+            }
+            @Override public List<Profile> findByUserIds(Collection<String> userIds) {
+                return userIds.stream().map(profiles::get).filter(Objects::nonNull).toList();
             }
             @Override public Profile save(Profile profile) {
                 profiles.put(profile.userId(), profile);
