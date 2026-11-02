@@ -29,7 +29,15 @@ public final class WiredUiControllers implements UiControllers,
         UiControllers.NotificacionController,
         UiControllers.PerfilController {
 
-    private final SkillSwapApplicationWiring wiring = new SkillSwapApplicationWiring();
+    private final SkillSwapApplicationWiring wiring;
+
+    public WiredUiControllers() {
+        this(new SkillSwapApplicationWiring());
+    }
+
+    public WiredUiControllers(SkillSwapApplicationWiring wiring) {
+        this.wiring = java.util.Objects.requireNonNull(wiring);
+    }
     private final UiModelMapper mapper = new UiModelMapper();
     private final UiOperationExecutor operations = new UiOperationExecutor();
     private final Map<String, Models.Publicacion> publicationCache = new HashMap<>();
@@ -254,8 +262,9 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     private Models.Publicacion toPublicacion(PublicationView view) {
+        var author = wiring.discoveryService().author(view.authorUserId());
         Models.Publicacion publication = mapper.toPublicacion(view,
-                providerName(view.authorUserId()), reputationFor(view));
+                author.displayName(), author.reputation());
         publicationCache.put(view.id(), publication);
         return publication;
     }
@@ -276,15 +285,8 @@ public final class WiredUiControllers implements UiControllers,
                 .orElseThrow(() -> new ApplicationException(ApplicationErrorCode.NOT_FOUND, "Contratación inexistente"));
     }
 
-    private static double reputationFor(PublicationView view) {
-        if ("user-mateo".equals(view.authorUserId())) {
-            return 4.9;
-        }
-        return 4.8 + ((view.requestCount() % 3) * 0.1);
-    }
-
-    private static String providerName(String authorUserId) {
-        return "user-mateo".equals(authorUserId) ? "Mateo Silva" : "Mentor SkillSwap";
+    private String providerName(String authorUserId) {
+        return wiring.discoveryService().author(authorUserId).displayName();
     }
 
 }

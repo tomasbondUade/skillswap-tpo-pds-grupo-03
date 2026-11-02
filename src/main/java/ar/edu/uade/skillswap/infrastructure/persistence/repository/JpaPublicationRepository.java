@@ -115,10 +115,16 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
             Root<PublicationEntity> publication =
                     resultQuery.from(PublicationEntity.class);
 
+            List<Predicate> predicates = new ArrayList<>(java.util.Arrays.asList(
+                    buildPredicates(cb, resultQuery, publication, search)));
+            Root<ProfileEntity> author = null;
+            if (search.order() == SearchOrder.BEST_RATING) {
+                author = resultQuery.from(ProfileEntity.class);
+                predicates.add(cb.equal(author.get("userId"), publication.get("authorUserId")));
+            }
             resultQuery.select(publication)
-                    .where(buildPredicates(
-                            cb, resultQuery, publication, search))
-                    .orderBy(orderBy(cb, publication, search.order()));
+                    .where(predicates.toArray(Predicate[]::new))
+                    .orderBy(orderBy(cb, publication, author, search.order()));
 
             int firstResult = Math.multiplyExact(
                     search.page(), search.size());
@@ -220,6 +226,7 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
     private List<jakarta.persistence.criteria.Order> orderBy(
             CriteriaBuilder cb,
             Root<PublicationEntity> publication,
+            Root<ProfileEntity> author,
             SearchOrder order) {
 
         List<jakarta.persistence.criteria.Order> orders = new ArrayList<>(switch (order) {
@@ -229,6 +236,7 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
             case MOST_RECENT -> List.of(
                     cb.desc(publication.get("createdAt")));
             case BEST_RATING -> List.of(
+                    cb.desc(author.get("reputation")),
                     cb.desc(publication.get("createdAt")));
             case RELEVANCE -> List.of(
                     cb.desc(publication.get("requestCount")),

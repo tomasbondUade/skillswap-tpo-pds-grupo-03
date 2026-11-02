@@ -15,6 +15,11 @@ Se verifican:
 - Dos pagos simultáneos de la misma contratación: un solo débito/crédito, un solo evento y un solo pago confirmado. Tres repeticiones.
 - Pagos de contrataciones distintas sobre la misma billetera con fondos para una sola: no hay doble gasto.
 - Filtros por texto, categoría, modalidad, precio y reputación; conteo total, orden por precio, páginas sucesivas sin duplicados y página fuera de rango. Desempate por ID cuando precio y fecha son idénticos.
+- Orden por reputación del autor antes de la fecha, con paginación y filtro mínimo de reputación.
+- Registro, consulta, actualización de habilidades/intereses, preferencias y disponibilidad, baja lógica y reactivación de perfiles.
+- Calificación persistida, actualización de reputación, rollback conjunto y unicidad por contratación/autor, comprobada en Application y directamente en MySQL. Las calificaciones duplicadas simultáneas también se verifican tres veces.
+- Bandejas de notificaciones por destinatario, lectura individual y masiva, permisos y rollback.
+- Reinicio del punto de composición JPA y conexión a `WiredUiControllers`: se conservan perfiles, saldo/ledger, contratación, calificación/reputación y lectura de la bienvenida. No se duplican publicaciones pausadas ni se resetean datos iniciales. La fábrica JPA se cierra correctamente.
 
 Las carreras usan conexiones y transacciones independientes en dos hilos, coordinados por barreras con tiempos máximos. Un error SQL, timeout o deadlock no cuenta como un rechazo de negocio válido. Estos escenarios no sustituyen pruebas de carga ni certifican todos los intercalados posibles.
 
@@ -26,6 +31,8 @@ Las carreras usan conexiones y transacciones independientes en dos hilos, coordi
 - La búsqueda incorpora el ID como último criterio de orden para estabilizar los límites de página cuando otros criterios empatan.
 
 Las reglas de estados, participantes, saldo y capacidad continúan en Domain/Application. Las correcciones se limitan a Infrastructure, configuración, migración y pruebas.
+
+El modo `--persistence=jpa` ejecuta Flyway y compone todos los repositorios JPA con un único `JpaTransactionManager` y `EntityManagerFactory`. La composición de servicios, Observer y Simple Factory es compartida con el modo en memoria. Los proveedores de email/push e identidad continúan siendo mock. El [README](../README.md) detalla cómo iniciar la interfaz con la base configurada.
 
 ## Ejecución local en PowerShell
 
@@ -70,4 +77,16 @@ docker rm skillswap-mysql-it
 - Flyway aplica V1, V2 y V3; Hibernate valida el esquema migrado. También se prueba actualizar datos existentes desde V1 y volver a ejecutar las migraciones sin cambios.
 - `git diff --check`: limpio.
 
-Este resultado cubre los escenarios enumerados. No certifica la demo Swing con persistencia, la cobertura de Domain/Application ni la carga de producción. Esos alcances se validan por separado.
+Ese resultado inicial cubría los escenarios existentes hasta ese cambio. La ampliación siguiente agrega los repositorios restantes y el modo JPA ejecutable.
+
+## Ampliación y conexión de la aplicación (02/11/2026)
+
+- `mvn -Pmysql-it clean test`: **140 pruebas, 0 fallos, 0 errores y 0 omitidas**; finalizó a las 12:12 de Argentina en el mismo entorno MySQL 8.4.13/JDK 17.
+- Incluye **23 ejecuciones de integración**: las 14 anteriores más perfiles, reputación/ordenamiento, calificaciones/rollback/unicidad/concurrencia, notificaciones y reinicio del punto de composición JPA.
+- El modo `--persistence=jpa` se inició desde `SkillSwapApplication` con las variables `SKILLSWAP_DB_*` y generó una captura de Swing. Se repitió el arranque sobre la misma base temporal. Flyway no reaplicó migraciones ni se duplicaron los datos iniciales.
+- Las tarjetas muestran el nombre y reputación del autor mediante un DTO público de Discovery; no se generan puntuaciones ficticias desde el controller.
+- El reinicio automatizado cierra y abre una fábrica JPA nueva, verifica datos persistidos y ejercita `WiredUiControllers` sobre la composición real. El cierre libera la fábrica y sus conexiones.
+- Para una captura mediante `exec:java` puede usarse `-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true` como propiedad de Maven: evita que el hilo de limpieza del driver sobreviva al grupo de hilos del plugin después de cerrar las conexiones. Esta opción no se requiere en las pruebas de Surefire.
+- `git diff --check`: limpio.
+
+Pendientes fuera de este alcance: recorrido visual completo de todas las pantallas, integración del selector/calificación de #65, medición de cobertura y carga de producción. Las pruebas no certifican todos los intercalados posibles ni entrega durable de notificaciones externas.

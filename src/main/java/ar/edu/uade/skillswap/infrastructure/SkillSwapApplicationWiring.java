@@ -1,7 +1,18 @@
 package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.application.port.out.BookingRepository;
-import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
+import ar.edu.uade.skillswap.application.model.NotificationMessage;
+import ar.edu.uade.skillswap.application.port.out.NotificationRepository;
+import ar.edu.uade.skillswap.infrastructure.config.FlywayConfig;
+import ar.edu.uade.skillswap.infrastructure.config.HibernateConfig;
+import ar.edu.uade.skillswap.infrastructure.persistence.JpaTransactionManager;
+import ar.edu.uade.skillswap.infrastructure.persistence.repository.JpaBookingRepository;
+import ar.edu.uade.skillswap.infrastructure.persistence.repository.JpaNotificationRepository;
+import ar.edu.uade.skillswap.infrastructure.persistence.repository.JpaProfileRepository;
+import ar.edu.uade.skillswap.infrastructure.persistence.repository.JpaPublicationRepository;
+import ar.edu.uade.skillswap.infrastructure.persistence.repository.JpaRatingRepository;
+import ar.edu.uade.skillswap.infrastructure.persistence.repository.JpaWalletRepository;
+import jakarta.persistence.EntityManagerFactory;
 import ar.edu.uade.skillswap.application.port.out.CurrentUserProvider;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
@@ -39,19 +50,20 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/** Minimal application wiring for the current mock/in-memory setup. */
-public final class SkillSwapApplicationWiring {
-    private final BookingRepository bookings = new InMemoryBookingRepository();
-    private final WalletRepository wallets = new InMemoryWalletRepository();
-    private final InMemoryNotificationRepository notifications = new InMemoryNotificationRepository();
+/** Composition root shared by the in-memory demo and the JPA execution mode. */
+public final class SkillSwapApplicationWiring implements AutoCloseable {
+    private final BookingRepository bookings;
+    private final WalletRepository wallets;
+    private final NotificationRepository notifications;
     private final InMemoryDomainEventPublisher events = new InMemoryDomainEventPublisher();
     private final NotificationEventObserver notificationObserver;
     private final RatingNotificationEventPublisher ratingNotifications;
-    private final RatingRepository ratings = new InMemoryRatingRepository();
+    private final RatingRepository ratings;
     private final ProfileRepository profiles;
-    private final PublicationRepository publications = new InMemoryPublicationRepository();
+    private final PublicationRepository publications;
     private final CurrentUserProvider currentUser;
-    private final TransactionManager transactions = new SynchronousTransactionManager();
+    private final TransactionManager transactions;
+    private final Runnable closeResources;
     private final RecommendationStrategy recommendationStrategy = new SkillAffinityStrategy();
     private final RefundPolicy refundPolicy = new StandardRefundPolicy();
 
@@ -75,7 +87,49 @@ public final class SkillSwapApplicationWiring {
     public SkillSwapApplicationWiring(MockIdentityClient identityClient,
                                       MockEmailClient emailClient, MockPushClient pushClient,
                                       ProfileRepository profiles) {
+        this(identityClient, emailClient, pushClient, profiles,
+                new InMemoryPublicationRepository(), new InMemoryBookingRepository(),
+                new InMemoryWalletRepository(), new InMemoryRatingRepository(),
+                new InMemoryNotificationRepository(), new SynchronousTransactionManager(), () -> {});
+    }
+
+    /** Runs Flyway before Hibernate validates the database configured through the environment. */
+    public static SkillSwapApplicationWiring persistent() {
+        FlywayConfig.migrate();
+        return usingJpa(HibernateConfig.createEntityManagerFactory(),
+                new MockIdentityClient("user-mateo"), new MockEmailClient(), new MockPushClient());
+    }
+
+    /** Takes ownership of the factory; close the wiring to release its connections. */
+    public static SkillSwapApplicationWiring usingJpa(EntityManagerFactory factory,
+            MockIdentityClient identity, MockEmailClient email, MockPushClient push) {
+        Objects.requireNonNull(factory, "Falta la fábrica JPA");
+        try {
+            var tx = new JpaTransactionManager(factory);
+            return new SkillSwapApplicationWiring(identity, email, push,
+                    new JpaProfileRepository(tx), new JpaPublicationRepository(tx),
+                    new JpaBookingRepository(tx), new JpaWalletRepository(tx),
+                    new JpaRatingRepository(tx), new JpaNotificationRepository(tx), tx,
+                    () -> { if (factory.isOpen()) factory.close(); });
+        } catch (RuntimeException | Error error) {
+            factory.close();
+            throw error;
+        }
+    }
+
+    private SkillSwapApplicationWiring(MockIdentityClient identityClient,
+            MockEmailClient emailClient, MockPushClient pushClient, ProfileRepository profiles,
+            PublicationRepository publications, BookingRepository bookings, WalletRepository wallets,
+            RatingRepository ratings, NotificationRepository notifications,
+            TransactionManager transactions, Runnable closeResources) {
         this.profiles = Objects.requireNonNull(profiles);
+        this.publications = Objects.requireNonNull(publications);
+        this.bookings = Objects.requireNonNull(bookings);
+        this.wallets = Objects.requireNonNull(wallets);
+        this.ratings = Objects.requireNonNull(ratings);
+        this.notifications = Objects.requireNonNull(notifications);
+        this.transactions = Objects.requireNonNull(transactions);
+        this.closeResources = Objects.requireNonNull(closeResources);
         currentUser = new IdentityProviderAdapter(identityClient);
         NotificationFactory factory = new NotificationFactory(notifications, emailClient, pushClient);
         notificationObserver = new NotificationEventObserver(profiles, factory);
@@ -91,7 +145,12 @@ public final class SkillSwapApplicationWiring {
         notificationService = new NotificationApplicationService(notifications, currentUser, transactions);
 
         subscribeNotifications();
-        seedDemoData();
+        transactions.required(() -> { seedDemoData(); return null; });
+    }
+
+    @Override
+    public void close() {
+        closeResources.run();
     }
 
     private void subscribeNotifications() {
@@ -119,14 +178,15 @@ public final class SkillSwapApplicationWiring {
                 Set.of(NotificationChannelType.EMAIL, NotificationChannelType.PUSH, NotificationChannelType.IN_APP));
         seedProfile("mentor-lu", "Lucía Pérez", List.of("UX", "Diseño"),
                 Set.of(NotificationChannelType.IN_APP));
-        wallets.save(Wallet.open(currentUser.currentUserId(), 2480));
-        notifications.save(new NotificationView(
-                "welcome-notification",
+        wallets.findByUserId(currentUser.currentUserId()).orElseGet(() ->
+                wallets.save(Wallet.open(currentUser.currentUserId(), 2480)));
+        if (notifications.findByRecipientUserId(currentUser.currentUserId()).stream()
+                .noneMatch(item -> "BIENVENIDA".equals(item.type()))) {
+            notifications.save(new NotificationMessage(currentUser.currentUserId(),
                 "Bienvenido a SkillSwap",
                 "Tu espacio para aprender y compartir habilidades ya está listo.",
-                LocalDateTime.now().minusMinutes(20),
-                false,
-                "BIENVENIDA"), currentUser.currentUserId());
+                "BIENVENIDA", NotificationChannelType.IN_APP));
+        }
 
         seedPublishedPublication(
             "user-mateo",
@@ -175,7 +235,7 @@ public final class SkillSwapApplicationWiring {
                                           Modality modality, int durationMinutes, int price,
                                           Set<String> tags) {
         wallets.findByUserId(authorId).orElseGet(() -> wallets.save(Wallet.open(authorId, 0)));
-        boolean exists = publications.findPublished().stream()
+        boolean exists = publications.findByAuthorUserId(authorId).stream()
             .anyMatch(item -> item.title().equalsIgnoreCase(title));
         if (exists) {
             return;

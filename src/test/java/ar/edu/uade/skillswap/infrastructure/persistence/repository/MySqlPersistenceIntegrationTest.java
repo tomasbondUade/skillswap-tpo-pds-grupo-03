@@ -6,6 +6,18 @@ import ar.edu.uade.skillswap.application.model.BookingData.RequestCommand;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.service.BookingApplicationService;
+import ar.edu.uade.skillswap.application.service.ProfileApplicationService;
+import ar.edu.uade.skillswap.application.service.RatingApplicationService;
+import ar.edu.uade.skillswap.application.service.NotificationApplicationService;
+import ar.edu.uade.skillswap.application.model.ProfileData;
+import ar.edu.uade.skillswap.application.model.NotificationMessage;
+import ar.edu.uade.skillswap.application.model.RatingData.SubmitCommand;
+import ar.edu.uade.skillswap.application.error.ApplicationErrorCode;
+import ar.edu.uade.skillswap.infrastructure.SkillSwapApplicationWiring;
+import ar.edu.uade.skillswap.infrastructure.WiredUiControllers;
+import ar.edu.uade.skillswap.infrastructure.identity.MockIdentityClient;
+import ar.edu.uade.skillswap.infrastructure.notification.email.MockEmailClient;
+import ar.edu.uade.skillswap.infrastructure.notification.push.MockPushClient;
 import ar.edu.uade.skillswap.domain.model.*;
 import ar.edu.uade.skillswap.domain.policy.StandardRefundPolicy;
 import ar.edu.uade.skillswap.infrastructure.persistence.JpaTransactionManager;
@@ -61,7 +73,7 @@ class MySqlPersistenceIntegrationTest {
     @AfterEach
     void removeOnlyOwnedSchema() throws Exception {
         try {
-            if (factory != null) factory.close();
+            if (factory != null && factory.isOpen()) factory.close();
         } finally {
             if (schema != null && schema.matches("skillswap_it_[a-f0-9]{32}")) {
                 try (var connection = DriverManager.getConnection(baseUrl, user, password);
@@ -79,17 +91,255 @@ class MySqlPersistenceIntegrationTest {
 
     private void initializeJpa() {
         flyway("latest").migrate();
-        factory = Persistence.createEntityManagerFactory("skillswap-persistence", Map.of(
-                "jakarta.persistence.jdbc.driver", "com.mysql.cj.jdbc.Driver",
-                "jakarta.persistence.jdbc.url", url,
-                "jakarta.persistence.jdbc.user", user,
-                "jakarta.persistence.jdbc.password", password,
-                "hibernate.hbm2ddl.auto", "validate"));
+        factory = openFactory();
         transactions = new JpaTransactionManager(factory);
         profiles = new JpaProfileRepository(transactions);
         publications = new JpaPublicationRepository(transactions);
         bookings = new JpaBookingRepository(transactions);
         wallets = new JpaWalletRepository(transactions);
+    }
+
+    private EntityManagerFactory openFactory() {
+        return Persistence.createEntityManagerFactory("skillswap-persistence", Map.of(
+                "jakarta.persistence.jdbc.driver", "com.mysql.cj.jdbc.Driver",
+                "jakarta.persistence.jdbc.url", url,
+                "jakarta.persistence.jdbc.user", user,
+                "jakarta.persistence.jdbc.password", password,
+                "hibernate.hbm2ddl.auto", "validate"));
+    }
+
+    @Test
+    void bestRatingOrdersByAuthorReputationBeforeDateAndPaginates() {
+        initializeJpa();
+        seed(1, 500);
+        String highId = transactions.required(() -> {
+            profiles.save(new Profile(null, "high", "Alta reputación", "", "UTC",
+                    List.of(), List.of(), Set.of(NotificationChannelType.IN_APP), 4.8, 5, true));
+            Publication high = Publication.builder("high").title("Java avanzada")
+                    .description("Mentoría").category("Tecnología").modality(Modality.REMOTE)
+                    .durationMinutes(60).capacity(1).basePrice(new SkillCoins(100))
+                    .addAvailability(AvailabilitySlot.of(LocalDateTime.now().plusDays(7).withNano(0),
+                            LocalDateTime.now().plusDays(7).plusHours(1).withNano(0), 1)).build();
+            high.publish("high");
+            publications.save(high);
+            transactions.currentEntityManager().flush();
+            transactions.currentEntityManager().createNativeQuery(
+                    "UPDATE publications SET created_at='2000-01-01 00:00:00' WHERE id=:id")
+                    .setParameter("id", high.id()).executeUpdate();
+            return high.id();
+        });
+        var first = publications.searchPublished(new SearchQuery("", "Tecnología", null,
+                null, null, null, SearchOrder.BEST_RATING, 0, 1));
+        var second = publications.searchPublished(new SearchQuery("", "Tecnología", null,
+                null, null, null, SearchOrder.BEST_RATING, 1, 1));
+        assertEquals(2, first.totalElements());
+        assertEquals(highId, first.items().get(0).id());
+        assertNotEquals(highId, second.items().get(0).id());
+        var filtered = publications.searchPublished(new SearchQuery("", null, null,
+                null, null, 4.0, SearchOrder.BEST_RATING, 0, 10));
+        assertEquals(1, filtered.totalElements());
+        assertEquals(highId, filtered.items().get(0).id());
+    }
+
+    @Test
+    void profileLifecyclePersistsCollectionsPreferencesAvailabilityAndLogicalDeletion() {
+        initializeJpa();
+        var service = new ProfileApplicationService(profiles, () -> "profile-user", transactions);
+        LocalDateTime start = LocalDateTime.now().plusDays(3).withNano(0);
+        var input = new ProfileData.RegisterCommand("Nombre", "Bio", "UTC", List.of("Java", "SQL"),
+                List.of("Diseño"), Set.of(NotificationChannelType.EMAIL, NotificationChannelType.IN_APP),
+                List.of(new ProfileData.AvailabilityInput("old-slot", start, start.plusHours(1), 2)));
+        service.register(input);
+        assertEquals(ApplicationErrorCode.CONFLICT,
+                assertThrows(ApplicationException.class, () -> service.register(input)).code());
+        service.update(new ProfileData.UpdateCommand("Nuevo nombre", "Nueva bio", "America/Argentina/Buenos_Aires",
+                List.of("SQL", "Testing"), List.of("Arquitectura")));
+        transactions.required(() -> {
+            Profile profile = profiles.findByUserIdForUpdate("profile-user").orElseThrow();
+            profile.updateAvailability("profile-user", List.of(AvailabilitySlot.of(start.plusDays(1),
+                    start.plusDays(1).plusHours(2), 3)));
+            profile.setNotificationChannels("profile-user", Set.of(NotificationChannelType.PUSH));
+            profiles.save(profile);
+            return null;
+        });
+        var loaded = service.viewMyProfile();
+        assertEquals("Nuevo nombre", loaded.displayName());
+        assertEquals(Set.of("SQL", "Testing"), new HashSet<>(loaded.skills()));
+        assertEquals(List.of("Arquitectura"), loaded.interests());
+        assertEquals(Set.of(NotificationChannelType.PUSH), loaded.notificationChannels());
+        assertEquals(1, loaded.availability().size());
+        assertEquals(3, loaded.availability().get(0).capacity());
+        assertNotEquals("old-slot", loaded.availability().get(0).id());
+        service.deactivateMyProfile();
+        assertFalse(service.viewMyProfile().active());
+        service.activateMyProfile();
+        assertTrue(service.viewMyProfile().active());
+    }
+
+    @Test
+    void ratingPersistsReputationAndRejectsDuplicatesInApplicationAndDatabase() throws Exception {
+        initializeJpa();
+        String id = completeBooking();
+        var ratings = new JpaRatingRepository(transactions);
+        var service = new RatingApplicationService(bookings, ratings, profiles, () -> "buyer",
+                transactions, event -> eventCount.incrementAndGet());
+        service.submit(new SubmitCommand(id, 5, "Excelente"));
+        assertEquals(5.0, profiles.findByUserId("provider").orElseThrow().reputation());
+        assertEquals(1, profiles.findByUserId("provider").orElseThrow().ratingCount());
+        assertEquals("Excelente", ratings.findBySubjectUserId("provider").get(0).comment());
+        assertEquals(ApplicationErrorCode.CONFLICT, assertThrows(ApplicationException.class,
+                () -> service.submit(new SubmitCommand(id, 1, "Duplicada"))).code());
+        try (var connection = DriverManager.getConnection(url, user, password);
+             var statement = connection.prepareStatement("INSERT INTO ratings "
+                     + "(id,booking_id,author_user_id,subject_user_id,score,comment,created_at) "
+                     + "VALUES ('duplicate',?,'buyer','provider',1,'Duplicada',NOW())")) {
+            statement.setString(1, id);
+            assertEquals("23000", assertThrows(java.sql.SQLException.class, statement::executeUpdate).getSQLState());
+        }
+        assertEquals(1, ratings.findBySubjectUserId("provider").size());
+    }
+
+    @Test
+    void ratingAndReputationRollbackTogetherWithoutPublishingEvent() {
+        initializeJpa();
+        String id = completeBooking();
+        var ratings = new JpaRatingRepository(transactions);
+        var service = new RatingApplicationService(bookings, ratings, profiles, () -> "buyer",
+                transactions, event -> eventCount.incrementAndGet());
+        int before = eventCount.get();
+        assertThrows(InjectedFailure.class, () -> transactions.required(() -> {
+            service.submit(new SubmitCommand(id, 4, "Buena"));
+            transactions.currentEntityManager().flush();
+            throw new InjectedFailure();
+        }));
+        assertFalse(ratings.existsByBookingIdAndAuthorUserId(id, "buyer"));
+        assertEquals(0, profiles.findByUserId("provider").orElseThrow().ratingCount());
+        assertEquals(0.0, profiles.findByUserId("provider").orElseThrow().reputation());
+        assertEquals(before, eventCount.get());
+    }
+
+    @RepeatedTest(3)
+    void concurrentDuplicateRatingsKeepOneRatingOneReputationUpdateAndOneEvent() throws Exception {
+        initializeJpa();
+        String id = completeBooking();
+        var ratings = new JpaRatingRepository(transactions);
+        var service = new RatingApplicationService(bookings, ratings, profiles, () -> "buyer",
+                transactions, event -> eventCount.incrementAndGet());
+        int before = eventCount.get();
+        assertSingleWinner(() -> service.submit(new SubmitCommand(id, 5, "Excelente")),
+                () -> service.submit(new SubmitCommand(id, 5, "Excelente")));
+        assertEquals(1, ratings.findBySubjectUserId("provider").size());
+        assertEquals(1, profiles.findByUserId("provider").orElseThrow().ratingCount());
+        assertEquals(5.0, profiles.findByUserId("provider").orElseThrow().reputation());
+        assertEquals(before + 1, eventCount.get());
+    }
+
+    @Test
+    void notificationsPersistReadStateRespectOwnershipAndRollback() {
+        initializeJpa();
+        seed(1, 500);
+        var repository = new JpaNotificationRepository(transactions);
+        var buyerInbox = new NotificationApplicationService(repository, () -> "buyer", transactions);
+        var providerInbox = new NotificationApplicationService(repository, () -> "provider", transactions);
+        repository.save(new NotificationMessage("buyer", "Título", "Detalle", "TEST", NotificationChannelType.IN_APP));
+        repository.save(new NotificationMessage("provider", "Privada", "Detalle", "TEST", NotificationChannelType.IN_APP));
+        var buyerNotification = buyerInbox.listMine().get(0);
+        assertEquals(ApplicationErrorCode.NOT_FOUND, assertThrows(ApplicationException.class,
+                () -> providerInbox.markRead(buyerNotification.id())).code());
+        assertFalse(buyerInbox.listMine().get(0).read());
+        assertThrows(InjectedFailure.class, () -> transactions.required(() -> {
+            buyerInbox.markRead(buyerNotification.id());
+            transactions.currentEntityManager().flush();
+            throw new InjectedFailure();
+        }));
+        assertFalse(buyerInbox.listMine().get(0).read());
+        buyerInbox.markAllRead();
+        assertTrue(buyerInbox.listMine().get(0).read());
+        assertFalse(providerInbox.listMine().get(0).read());
+        providerInbox.markRead(providerInbox.listMine().get(0).id());
+        assertTrue(providerInbox.listMine().get(0).read());
+    }
+
+    @Test
+    void jpaWiringSurvivesRestartWithoutResettingBalancesProfilesBookingsOrNotifications() {
+        initializeJpa();
+        class Identity extends MockIdentityClient {
+            String actor = "user-mateo";
+            @Override public IdentityResponse getAuthenticatedIdentity() { return new IdentityResponse(actor); }
+        }
+        var identity = new Identity();
+        var wiring = SkillSwapApplicationWiring.usingJpa(factory, identity, new MockEmailClient(), new MockPushClient());
+        String bookingId;
+        String publicationId;
+        int expectedBalance;
+        try {
+            var controllers = new WiredUiControllers(wiring);
+            controllers.wallet().acreditarDemo("user-mateo", 120);
+            wiring.profileService().update(new ProfileData.UpdateCommand("Mateo actualizado", "Bio", "UTC",
+                    List.of("Java"), List.of("Diseño")));
+            wiring.notificationService().markAllRead();
+            identity.actor = "mentor-ana";
+            var publication = wiring.publicationService().listMyPublications().get(0);
+            publicationId = publication.id();
+            identity.actor = "user-mateo";
+            var booking = wiring.bookingService().request(new RequestCommand(publication.id(),
+                    "Mensaje persistente", "Practicar", publication.availability().get(0).id()));
+            bookingId = booking.id();
+            var command = new BookingCommand(bookingId);
+            identity.actor = "mentor-ana";
+            wiring.bookingService().accept(command);
+            identity.actor = "user-mateo";
+            wiring.bookingService().pay(command);
+            identity.actor = "mentor-ana";
+            wiring.bookingService().start(command);
+            identity.actor = "user-mateo";
+            wiring.bookingService().complete(command);
+            wiring.ratingService().submit(new SubmitCommand(bookingId, 5, "Persistido"));
+            var author = wiring.discoveryService().author("mentor-ana");
+            assertEquals("Ana García", author.displayName());
+            assertEquals(5.0, author.reputation());
+            expectedBalance = controllers.wallet().consultarSaldo("user-mateo");
+            transactions.required(() -> {
+                Publication saved = publications.findByIdForUpdate(publicationId).orElseThrow();
+                saved.pause("mentor-ana");
+                publications.save(saved);
+                return null;
+            });
+        } finally {
+            wiring.close();
+        }
+        factory = openFactory();
+        identity.actor = "user-mateo";
+        try (var reopened = SkillSwapApplicationWiring.usingJpa(factory, identity,
+                new MockEmailClient(), new MockPushClient())) {
+            assertEquals(expectedBalance, new WiredUiControllers(reopened).wallet().consultarSaldo("user-mateo"));
+            assertEquals("Mateo actualizado", reopened.profileService().viewMyProfile().displayName());
+            assertEquals(1, reopened.bookingService().listMyBookings().size());
+            assertEquals(bookingId, reopened.bookingService().listMyBookings().get(0).id());
+            assertEquals("Mensaje persistente", reopened.bookingService().listMyBookings().get(0).clientMessage());
+            var welcome = reopened.notificationService().listMine().stream()
+                    .filter(n -> "BIENVENIDA".equals(n.type())).toList();
+            assertEquals(1, welcome.size());
+            assertTrue(welcome.get(0).read());
+            identity.actor = "mentor-ana";
+            assertEquals(1, reopened.publicationService().listMyPublications().size());
+            assertEquals(publicationId, reopened.publicationService().listMyPublications().get(0).id());
+            assertEquals(5.0, reopened.profileService().viewMyProfile().reputation());
+            assertEquals(1, reopened.notificationService().listMine().stream()
+                    .filter(n -> "RATING_RECEIVED".equals(n.type())).count());
+        }
+        assertFalse(factory.isOpen());
+    }
+
+    private String completeBooking() {
+        Publication publication = seed(2, 500);
+        var booking = service("buyer").request(command(publication));
+        var command = new BookingCommand(booking.id());
+        service("provider").accept(command);
+        service("buyer").pay(command);
+        service("provider").start(command);
+        service("buyer").complete(command);
+        return booking.id();
     }
 
     @Test
@@ -357,9 +607,11 @@ class MySqlPersistenceIntegrationTest {
                     } catch (ApplicationException expectedBusinessRejection) {
                         rejections.add(expectedBusinessRejection.getMessage());
                         // SQL errors, deadlocks and timeouts must fail the test, not count as valid rejection.
-                        assertNotNull(expectedBusinessRejection.getCause());
-                        assertTrue(expectedBusinessRejection.getCause() instanceof IllegalStateException
-                                || expectedBusinessRejection.getCause() instanceof IllegalArgumentException);
+                        if (expectedBusinessRejection.code() != ApplicationErrorCode.CONFLICT) {
+                            assertNotNull(expectedBusinessRejection.getCause());
+                            assertTrue(expectedBusinessRejection.getCause() instanceof IllegalStateException
+                                    || expectedBusinessRejection.getCause() instanceof IllegalArgumentException);
+                        }
                         return false;
                     }
                 }));
