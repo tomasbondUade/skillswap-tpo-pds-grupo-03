@@ -1,6 +1,9 @@
 package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
+import ar.edu.uade.skillswap.application.model.NotificationMessage;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import ar.edu.uade.skillswap.application.port.out.NotificationRepository;
 
 import java.util.LinkedHashMap;
@@ -39,6 +42,13 @@ public final class InMemoryNotificationRepository implements NotificationReposit
     @Override
     public void markAllRead(String userId) {
         findByRecipientUserId(userId).forEach(notification -> markRead(notification.id(), userId));
+    }
+
+    @Override
+    public void save(NotificationMessage notification) {
+        save(new NotificationView(UUID.randomUUID().toString(), notification.title(),
+                notification.detail(), LocalDateTime.now(), false, notification.type()),
+                notification.recipientUserId());
     }
 
     public void save(NotificationView notification, String recipientUserId) {

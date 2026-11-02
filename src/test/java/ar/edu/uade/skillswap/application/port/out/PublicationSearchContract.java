@@ -60,14 +60,14 @@ public abstract class PublicationSearchContract {
     }
 
     @Test
-    void excluyeAutoresDadosDeBajaYSinPerfil() {
+    void excluyeAutoresDadosDeBaja() {
         var repository = createRepository(List.of(
                 pub("active").author("ana").build(),
                 pub("inactive").author("beto").build(),
-                pub("no-profile").author("org-1").build()),
+                pub("second-active").author("ana").title("Otra tutoría").build()),
                 List.of(profile("ana", 0, 0, true), profile("beto", 0, 0, false)));
 
-        assertEquals(List.of("active"), ids(repository.searchPublished(query().build())));
+        assertEquals(List.of("active", "second-active"), ids(repository.searchPublished(query().build())));
     }
 
     // ---------- Filtros (R3–R7) ----------

@@ -61,10 +61,10 @@ La consigna (§4.3) pide buscar publicaciones por texto, categoría, modalidad, 
 | Cambio | Qué hay que adaptar |
 | --- | --- |
 | `SearchQuery` agrega `skill` | Los accessors existentes no cambian; el constructor recibe `skill` después de `modality`. Filtrar por `search.skill()`. |
-| `ProfileRepository.findByUserIds` es abstracto | `JpaProfileRepository` debe implementarlo con una única consulta `IN`. |
-| Contrato de `searchPublished` | `JpaPublicationRepository` debe extender `PublicationSearchContract`. Hoy le falta: filtro por habilidad, `BEST_RATING` por reputación (ordena por fecha), texto en etiquetas, exclusión de autores dados de baja y desempate por id. |
+| `ProfileRepository.findByUserIds` | `JpaProfileRepository` lo implementa con una única consulta `IN` y devuelve una lista vacía para una entrada vacía. |
+| Contrato de `searchPublished` | `JpaPublicationRepository` implementa habilidad, texto en etiquetas, reputación mínima, autores activos y los cuatro órdenes con desempates estables. `JpaPublicationSearchContractTest` ejecuta el mismo contrato sobre MySQL. |
 | Rendimiento | Unir con `profiles` (JOIN, garantizado por la FK) para filtrar y ordenar por reputación y excluir autores dados de baja; cargar etiquetas y franjas sin N+1; marcar la consulta como de solo lectura. Índices sugeridos: `(status, created_at)`, `(status, base_price)`, `(status, category)`, `publication_tag(tag)`, `profile(user_id)` único. |
-| Acentos | Collation `utf8mb4_0900_ai_ci` en las columnas de texto buscadas. |
+| Acentos | La migración V4 aplica `utf8mb4_0900_ai_ci` a título, descripción, categoría y etiquetas para que MySQL coincida con el repositorio en memoria. |
 
 **#15 (casos de uso de publicaciones).** `PublicationApplicationService` recibe `ProfileRepository` y sus vistas incluyen al autor; crear un borrador requiere que el usuario tenga perfil.
 
@@ -79,7 +79,7 @@ La consigna (§4.3) pide buscar publicaciones por texto, categoría, modalidad, 
 | Prueba | Cubre |
 | --- | --- |
 | `SearchQueryTest` | Valores por defecto, recorte de espacios y validación de texto, reputación, rango de precio y página. |
-| `PublicationSearchContract` / `InMemoryPublicationSearchTest` | Visibilidad, cada filtro, filtros en blanco, combinaciones, órdenes y desempates, paginación completa. |
+| `PublicationSearchContract`, `InMemoryPublicationSearchTest` y `JpaPublicationSearchContractTest` | Visibilidad, cada filtro, filtros en blanco, combinaciones, órdenes y desempates, paginación completa en memoria y MySQL. |
 | `DiscoveryApplicationServiceTest` | Delegación sin modificar criterios, autor en una sola lectura de perfiles (búsqueda y recomendaciones), autor sin perfil como inconsistencia, validación, propagación de fallas, búsqueda sin autenticación. |
 | `PublicationApplicationServiceTest` | Vistas de gestión con autor, borrador sin perfil rechazado, listado vacío sin perfil. |
 | `InMemoryRepositoriesTest` | Lectura de perfiles en lote. |

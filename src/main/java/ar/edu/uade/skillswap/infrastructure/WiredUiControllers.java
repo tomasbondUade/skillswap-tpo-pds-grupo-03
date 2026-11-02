@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 public final class WiredUiControllers implements UiControllers,
         UiControllers.BusquedaController,
@@ -30,7 +29,15 @@ public final class WiredUiControllers implements UiControllers,
         UiControllers.NotificacionController,
         UiControllers.PerfilController {
 
-    private final SkillSwapApplicationWiring wiring = new SkillSwapApplicationWiring();
+    private final SkillSwapApplicationWiring wiring;
+
+    public WiredUiControllers() {
+        this(new SkillSwapApplicationWiring());
+    }
+
+    public WiredUiControllers(SkillSwapApplicationWiring wiring) {
+        this.wiring = java.util.Objects.requireNonNull(wiring);
+    }
     private final UiModelMapper mapper = new UiModelMapper();
     private final UiOperationExecutor operations = new UiOperationExecutor();
     private final Map<String, Models.Publicacion> publicationCache = new HashMap<>();
@@ -88,8 +95,8 @@ public final class WiredUiControllers implements UiControllers,
     @Override
     public List<String> categorias() {
         return operations.execute(() -> {
-            return Stream.concat(
-                Stream.of("Todas"),
+            return java.util.stream.Stream.concat(
+                java.util.stream.Stream.of("Todas"),
                 wiring.discoveryService().categories().stream())
                 .toList();
         });
@@ -276,8 +283,8 @@ public final class WiredUiControllers implements UiControllers,
                 .orElseThrow(() -> new ApplicationException(ApplicationErrorCode.NOT_FOUND, "Contratación inexistente"));
     }
 
-    private static String providerName(String authorUserId) {
-        return "user-mateo".equals(authorUserId) ? "Mateo Silva" : "Mentor SkillSwap";
+    private String providerName(String authorUserId) {
+        return wiring.discoveryService().author(authorUserId).displayName();
     }
 
 }
