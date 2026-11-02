@@ -2,13 +2,9 @@ package ar.edu.uade.skillswap.application.model;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PageRequest;
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PriceRange;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import org.junit.jupiter.api.Test;
@@ -16,23 +12,22 @@ import org.junit.jupiter.api.Test;
 class SearchQueryTest {
     @Test
     void aplicaValoresPorDefectoCuandoNoHayCriterios() {
-        SearchQuery query = new SearchQuery(null, null, null, null, null, null, null, null);
+        SearchQuery query = new SearchQuery(null, null, null, null, null, null, null, null, 0, 20);
 
         assertEquals("", query.text());
         assertNull(query.category());
         assertNull(query.modality());
         assertNull(query.skill());
-        assertEquals(PriceRange.ANY, query.price());
+        assertNull(query.minimumPrice());
+        assertNull(query.maximumPrice());
         assertNull(query.minimumReputation());
         assertEquals(SearchOrder.RELEVANCE, query.order());
-        assertEquals(PageRequest.FIRST, query.page());
-        assertEquals(20, query.page().size());
     }
 
     @Test
     void recortaEspaciosDeTextoCategoriaYHabilidad() {
         SearchQuery query = new SearchQuery("  java para entrevistas ", " Tecnología ", null, " Java ",
-                null, null, null, null);
+                null, null, null, null, 0, 20);
 
         assertEquals("java para entrevistas", query.text());
         assertEquals("Tecnología", query.category());
@@ -42,8 +37,8 @@ class SearchQueryTest {
     @Test
     void rechazaTextoMasLargoQueElMaximo() {
         String limite = "a".repeat(SearchQuery.MAX_TEXT_LENGTH);
-        assertDoesNotThrow(() -> query(limite));
-        assertThrows(IllegalArgumentException.class, () -> query(limite + "a"));
+        assertDoesNotThrow(() -> withText(limite));
+        assertThrows(IllegalArgumentException.class, () -> withText(limite + "a"));
     }
 
     @Test
@@ -57,39 +52,38 @@ class SearchQueryTest {
     }
 
     @Test
-    void elRangoDePrecioEsCerradoYNoAdmiteNegativosNiInversion() {
-        PriceRange range = new PriceRange(100, 200);
-        assertTrue(range.contains(100));
-        assertTrue(range.contains(200));
-        assertFalse(range.contains(99));
-        assertFalse(range.contains(201));
-        assertTrue(new PriceRange(150, 150).contains(150));
-        assertTrue(PriceRange.ANY.contains(0));
-        assertTrue(new PriceRange(null, 10).contains(0));
-        assertFalse(new PriceRange(10, null).contains(9));
-
-        assertThrows(IllegalArgumentException.class, () -> new PriceRange(-1, null));
-        assertThrows(IllegalArgumentException.class, () -> new PriceRange(null, -1));
-        assertThrows(IllegalArgumentException.class, () -> new PriceRange(201, 200));
+    void validaElRangoDePrecio() {
+        assertDoesNotThrow(() -> withPrices(150, 150));
+        assertDoesNotThrow(() -> withPrices(null, 10));
+        assertDoesNotThrow(() -> withPrices(0, null));
+        assertThrows(IllegalArgumentException.class, () -> withPrices(-1, null));
+        assertThrows(IllegalArgumentException.class, () -> withPrices(null, -1));
+        assertThrows(IllegalArgumentException.class, () -> withPrices(201, 200));
     }
 
     @Test
-    void laPaginaValidaLimitesTamanoMaximoYDesborde() {
-        assertDoesNotThrow(() -> new PageRequest(0, 1));
-        assertDoesNotThrow(() -> new PageRequest(3, PageRequest.MAX_SIZE));
-        assertEquals(60, new PageRequest(3, 20).offset());
-
-        assertThrows(IllegalArgumentException.class, () -> new PageRequest(-1, 10));
-        assertThrows(IllegalArgumentException.class, () -> new PageRequest(0, 0));
-        assertThrows(IllegalArgumentException.class, () -> new PageRequest(0, PageRequest.MAX_SIZE + 1));
-        assertThrows(IllegalArgumentException.class, () -> new PageRequest(Integer.MAX_VALUE, 2));
+    void validaLimitesDePaginaTamanoMaximoYDesborde() {
+        assertDoesNotThrow(() -> withPage(0, 1));
+        assertDoesNotThrow(() -> withPage(3, 100));
+        assertThrows(IllegalArgumentException.class, () -> withPage(-1, 10));
+        assertThrows(IllegalArgumentException.class, () -> withPage(0, 0));
+        assertThrows(IllegalArgumentException.class, () -> withPage(0, 101));
+        assertThrows(IllegalArgumentException.class, () -> withPage(Integer.MAX_VALUE, 2));
     }
 
-    private static SearchQuery query(String text) {
-        return new SearchQuery(text, null, null, null, null, null, null, null);
+    private static SearchQuery withText(String text) {
+        return new SearchQuery(text, null, null, null, null, null, null, null, 0, 20);
     }
 
     private static SearchQuery withReputation(double reputation) {
-        return new SearchQuery(null, null, null, null, null, reputation, null, null);
+        return new SearchQuery(null, null, null, null, null, null, reputation, null, 0, 20);
+    }
+
+    private static SearchQuery withPrices(Integer minimum, Integer maximum) {
+        return new SearchQuery(null, null, null, null, minimum, maximum, null, null, 0, 20);
+    }
+
+    private static SearchQuery withPage(int page, int size) {
+        return new SearchQuery(null, null, null, null, null, null, null, null, page, size);
     }
 }

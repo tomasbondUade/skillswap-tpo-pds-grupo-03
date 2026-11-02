@@ -1,8 +1,6 @@
 package ar.edu.uade.skillswap.controllers.mapper;
 
 import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PageRequest;
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PriceRange;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
@@ -18,14 +16,12 @@ import ar.edu.uade.skillswap.model.Models;
 public final class UiModelMapper {
     public SearchQuery toSearchQuery(Models.FiltrosBusqueda filtros) {
         if (filtros == null) throw new IllegalArgumentException("Faltan los filtros de búsqueda");
-        // La UI actual no expone habilidad, precio mínimo, reputación mínima ni página (#30).
         return new SearchQuery(filtros.texto(),
                 filtros.categoria() != null && !"Todas".equals(filtros.categoria())
                         ? filtros.categoria() : null,
                 filtros.modalidad() == null ? null : toModality(filtros.modalidad()),
-                null,
-                new PriceRange(null, filtros.precioMaximo() > 0 ? filtros.precioMaximo() : null),
-                null, toSearchOrder(filtros.orden()), PageRequest.FIRST);
+                null, null, filtros.precioMaximo() > 0 ? filtros.precioMaximo() : null,
+                null, toSearchOrder(filtros.orden()), 0, 20);
     }
 
     public Models.Publicacion toPublicacion(PublicationView view) {

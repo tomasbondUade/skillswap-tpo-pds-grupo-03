@@ -71,9 +71,9 @@ public final class InMemoryPublicationRepository implements PublicationRepositor
                 .sorted(orderFor(query, authors))
                 .toList();
 
-        int from = Math.min(query.page().offset(), matches.size());
-        int to = Math.min(from + query.page().size(), matches.size());
-        return new PageResult<>(matches.subList(from, to), query.page().page(), query.page().size(), matches.size());
+        int from = Math.min(query.page() * query.size(), matches.size());
+        int to = Math.min(from + query.size(), matches.size());
+        return new PageResult<>(matches.subList(from, to), query.page(), query.size(), matches.size());
     }
 
     @Override
@@ -97,7 +97,9 @@ public final class InMemoryPublicationRepository implements PublicationRepositor
         Predicate<Publication> byModality = item -> query.modality() == null || item.modality() == query.modality();
         Predicate<Publication> bySkill = item -> skill.isBlank()
                 || item.tags().stream().anyMatch(tag -> normalize(tag).equals(skill));
-        Predicate<Publication> byPrice = item -> query.price().contains(item.basePrice().amount());
+        Predicate<Publication> byPrice = item -> (query.minimumPrice() == null
+                || item.basePrice().amount() >= query.minimumPrice())
+                && (query.maximumPrice() == null || item.basePrice().amount() <= query.maximumPrice());
         Predicate<Publication> byReputation = item -> query.minimumReputation() == null
                 || authors.get(item.authorUserId()).reputation() >= query.minimumReputation();
         return activeAuthor.and(byText).and(byCategory).and(byModality).and(bySkill).and(byPrice).and(byReputation);

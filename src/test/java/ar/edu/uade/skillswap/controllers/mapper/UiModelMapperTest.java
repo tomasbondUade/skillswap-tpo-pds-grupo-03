@@ -80,17 +80,16 @@ class UiModelMapperTest {
         assertNull(defaults.category());
         assertNull(defaults.modality());
         assertNull(defaults.skill());
-        assertNull(defaults.price().maximum());
-        assertNull(defaults.minimumReputation());
+        assertNull(defaults.maximumPrice());
         assertEquals(SearchOrder.RELEVANCE, defaults.order());
-        assertEquals(0, defaults.page().page());
-        assertEquals(20, defaults.page().size());
+        assertEquals(0, defaults.page());
+        assertEquals(20, defaults.size());
 
         var query = mapper.toSearchQuery(new Models.FiltrosBusqueda("Java", "Tecnología",
                 Models.Modalidad.HIBRIDA, 250, "Menor precio"));
         assertEquals("Tecnología", query.category());
         assertEquals(Modality.HYBRID, query.modality());
-        assertEquals(250, query.price().maximum());
+        assertEquals(250, query.maximumPrice());
         assertEquals(SearchOrder.LOWEST_PRICE, query.order());
         assertEquals(SearchOrder.BEST_RATING, mapper.toSearchQuery(
                 new Models.FiltrosBusqueda("", null, null, 0, "Mejor reputación")).order());

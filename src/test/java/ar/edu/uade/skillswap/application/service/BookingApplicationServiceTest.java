@@ -379,7 +379,7 @@ class BookingApplicationServiceTest {
 
         @Override
         public PageResult<Publication> searchPublished(SearchQuery query) {
-            return new PageResult<>(List.of(), query.page().page(), query.page().size(), 0);
+            return new PageResult<>(List.of(), query.page(), query.size(), 0);
         }
 
         @Override

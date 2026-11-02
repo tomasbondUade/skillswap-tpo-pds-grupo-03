@@ -3,8 +3,6 @@ package ar.edu.uade.skillswap.application.port.out;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PageRequest;
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PriceRange;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.PageResult;
@@ -103,7 +101,7 @@ public abstract class PublicationSearchContract {
         var repository = repositoryWith(List.of(pub("a").category("Diseño").build(),
                 pub("b").category("Tecnología").tags("Java").build()), List.of());
 
-        var blank = new SearchQuery("   ", "  ", null, " ", null, null, null, null);
+        var blank = new SearchQuery("   ", "  ", null, " ", null, null, null, null, 0, 20);
 
         assertEquals(2, repository.searchPublished(blank).totalElements());
     }
@@ -147,9 +145,9 @@ public abstract class PublicationSearchContract {
                 pub("p201").price(201).build()), List.of());
 
         assertEquals(Set.of("p100", "p150", "p200"),
-                Set.copyOf(ids(repository.searchPublished(query().price(new PriceRange(100, 200)).build()))));
+                Set.copyOf(ids(repository.searchPublished(query().price(100, 200).build()))));
         assertEquals(Set.of("p99", "p100"),
-                Set.copyOf(ids(repository.searchPublished(query().price(new PriceRange(null, 100)).build()))));
+                Set.copyOf(ids(repository.searchPublished(query().price(null, 100).build()))));
     }
 
     @Test
@@ -183,7 +181,7 @@ public abstract class PublicationSearchContract {
                 List.of(profile("ana", 4.5, 4, true), profile("beto", 2.0, 1, true)));
 
         var query = new SearchQuery("entrevistas", "tecnología", Modality.REMOTE, "java",
-                new PriceRange(100, 200), 4.0, SearchOrder.RELEVANCE, PageRequest.FIRST);
+                100, 200, 4.0, SearchOrder.RELEVANCE, 0, 20);
 
         assertEquals(List.of("match"), ids(repository.searchPublished(query)));
     }
@@ -313,7 +311,7 @@ public abstract class PublicationSearchContract {
     }
 
     protected static SearchQuery page(int page, int size) {
-        return query().page(new PageRequest(page, size)).build();
+        return query().page(page, size).build();
     }
 
     protected static QueryFixture query() {
@@ -377,22 +375,33 @@ public abstract class PublicationSearchContract {
         private String category;
         private Modality modality;
         private String skill;
-        private PriceRange price;
+        private Integer minimumPrice;
+        private Integer maximumPrice;
         private Double minimumReputation;
         private SearchOrder order;
-        private PageRequest page;
+        private int page;
+        private int size = 20;
 
         public QueryFixture text(String value) { text = value; return this; }
         public QueryFixture category(String value) { category = value; return this; }
         public QueryFixture modality(Modality value) { modality = value; return this; }
         public QueryFixture skill(String value) { skill = value; return this; }
-        public QueryFixture price(PriceRange value) { price = value; return this; }
+        public QueryFixture price(Integer minimum, Integer maximum) {
+            minimumPrice = minimum;
+            maximumPrice = maximum;
+            return this;
+        }
         public QueryFixture minimumReputation(double value) { minimumReputation = value; return this; }
         public QueryFixture order(SearchOrder value) { order = value; return this; }
-        public QueryFixture page(PageRequest value) { page = value; return this; }
+        public QueryFixture page(int number, int pageSize) {
+            page = number;
+            size = pageSize;
+            return this;
+        }
 
         public SearchQuery build() {
-            return new SearchQuery(text, category, modality, skill, price, minimumReputation, order, page);
+            return new SearchQuery(text, category, modality, skill, minimumPrice, maximumPrice, minimumReputation, order,
+                    page, size);
         }
     }
 }

@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ar.edu.uade.skillswap.application.error.ApplicationErrorCode;
 import ar.edu.uade.skillswap.application.error.ApplicationException;
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PageRequest;
-import ar.edu.uade.skillswap.application.model.DiscoveryData.PriceRange;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.PageResult;
@@ -38,8 +36,8 @@ class DiscoveryApplicationServiceTest {
     void delegaLaBusquedaSinModificarLosCriteriosYConservaLaPaginacion() {
         var publications = new StubPublications(List.of(), new PageResult<>(List.of(publication("p1", "ana")), 2, 5, 11));
         var service = service(publications, new StubProfiles(List.of(profile("ana", 0, 0))));
-        var query = new SearchQuery("java", "Tecnología", Modality.REMOTE, "Java", new PriceRange(10, 200),
-                4.0, SearchOrder.BEST_RATING, new PageRequest(2, 5));
+        var query = new SearchQuery("java", "Tecnología", Modality.REMOTE, "Java", 10, 200,
+                4.0, SearchOrder.BEST_RATING, 2, 5);
 
         PageResult<PublicationView> result = service.search(query);
 
@@ -149,7 +147,7 @@ class DiscoveryApplicationServiceTest {
     }
 
     private static SearchQuery anyQuery() {
-        return new SearchQuery(null, null, null, null, null, null, null, null);
+        return new SearchQuery(null, null, null, null, null, null, null, null, 0, 20);
     }
 
     private static PageResult<Publication> emptyPage() {
