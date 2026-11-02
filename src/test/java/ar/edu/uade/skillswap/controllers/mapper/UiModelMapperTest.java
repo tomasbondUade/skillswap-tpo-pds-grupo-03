@@ -93,6 +93,10 @@ class UiModelMapperTest {
         assertEquals(SearchOrder.LOWEST_PRICE, query.order());
         assertEquals(SearchOrder.BEST_RATING, mapper.toSearchQuery(
                 new Models.FiltrosBusqueda("", null, null, 0, "Mejor reputación")).order());
+        assertEquals(SearchOrder.MOST_RECENT, mapper.toSearchQuery(
+                new Models.FiltrosBusqueda("", null, null, 0, "Más recientes")).order());
+        assertThrows(IllegalArgumentException.class, () -> mapper.toSearchQuery(
+                new Models.FiltrosBusqueda("", null, null, 0, "Alfabético")));
     }
 
     @Test
