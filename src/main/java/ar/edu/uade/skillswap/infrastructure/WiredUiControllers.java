@@ -1,12 +1,9 @@
 package ar.edu.uade.skillswap.infrastructure;
 
-import ar.edu.uade.skillswap.application.error.ApplicationErrorCode;
-import ar.edu.uade.skillswap.application.error.ApplicationException;
-import ar.edu.uade.skillswap.application.model.BookingData.BookingCommand;
 import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
-import ar.edu.uade.skillswap.application.model.BookingData.CancelCommand;
-import ar.edu.uade.skillswap.application.model.BookingData.RequestCommand;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
+import ar.edu.uade.skillswap.controllers.UiControllers;
+import ar.edu.uade.skillswap.controllers.ContratacionUiController;
 import ar.edu.uade.skillswap.controllers.PerfilUiController;
 import ar.edu.uade.skillswap.controllers.PublicacionUiController;
 import ar.edu.uade.skillswap.controllers.UiControllers;
@@ -20,13 +17,13 @@ import java.util.Map;
 public final class WiredUiControllers implements UiControllers,
         UiControllers.BusquedaController,
         UiControllers.PublicacionController,
-        UiControllers.ContratacionController,
         UiControllers.WalletController,
         UiControllers.NotificacionController,
         UiControllers.PerfilController {
 
     private final SkillSwapApplicationWiring wiring;
     private final PerfilUiController profileController;
+    private final ContratacionUiController bookingController;
     private final PublicacionUiController publicationController;
 
     private final UiModelMapper mapper = new UiModelMapper();
@@ -39,10 +36,10 @@ public final class WiredUiControllers implements UiControllers,
 
     public WiredUiControllers(SkillSwapApplicationWiring wiring) {
         this.wiring = java.util.Objects.requireNonNull(wiring);
-        profileController = new PerfilUiController(
-                wiring.profileService(), wiring.currentUserProvider(), operations);
-        publicationController = new PublicacionUiController(
-                wiring.publicationService(), wiring.currentUserProvider(), operations);
+        profileController = new PerfilUiController(wiring.profileService(), wiring.currentUserProvider(), operations);
+        bookingController = new ContratacionUiController(wiring.bookingService(),
+                wiring.currentUserProvider(), operations, this::toContratacion);
+        publicationController = new PublicacionUiController(wiring.publicationService(), wiring.currentUserProvider(), operations);
     }
 
     @Override
@@ -57,7 +54,7 @@ public final class WiredUiControllers implements UiControllers,
 
     @Override
     public ContratacionController contrataciones() {
-        return this;
+        return bookingController;
     }
 
     @Override
