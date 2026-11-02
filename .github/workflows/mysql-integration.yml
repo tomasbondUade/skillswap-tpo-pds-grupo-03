@@ -26,14 +26,13 @@ jobs:
           MYSQL_ROOT_PASSWORD: skillswap-ci-only
           MYSQL_ROOT_HOST: '%'
         ports:
-          - 3306/tcp
+          - '3306'
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -pskillswap-ci-only"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=30
     env:
-      SKILLSWAP_MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:${{ job.services.mysql.ports[3306] }}/?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC
       SKILLSWAP_MYSQL_TEST_USER: root
       SKILLSWAP_MYSQL_TEST_PASSWORD: skillswap-ci-only
     steps:
@@ -43,4 +42,6 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Run unit and real MySQL integration tests
+        env:
+          SKILLSWAP_MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:${{ job.services.mysql.ports[3306] }}/?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC
         run: mvn --batch-mode --no-transfer-progress -Pmysql-it clean test
