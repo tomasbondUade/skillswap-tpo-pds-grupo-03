@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public final class WiredUiControllers implements UiControllers,
         UiControllers.BusquedaController,
@@ -87,8 +88,8 @@ public final class WiredUiControllers implements UiControllers,
     @Override
     public List<String> categorias() {
         return operations.execute(() -> {
-            return java.util.stream.Stream.concat(
-                java.util.stream.Stream.of("Todas"),
+            return Stream.concat(
+                Stream.of("Todas"),
                 wiring.discoveryService().categories().stream())
                 .toList();
         });
@@ -254,8 +255,7 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     private Models.Publicacion toPublicacion(PublicationView view) {
-        Models.Publicacion publication = mapper.toPublicacion(view,
-                providerName(view.authorUserId()), reputationFor(view));
+        Models.Publicacion publication = mapper.toPublicacion(view);
         publicationCache.put(view.id(), publication);
         return publication;
     }
@@ -274,13 +274,6 @@ public final class WiredUiControllers implements UiControllers,
                 .filter(booking -> booking.id().equals(bookingId))
                 .findFirst()
                 .orElseThrow(() -> new ApplicationException(ApplicationErrorCode.NOT_FOUND, "Contratación inexistente"));
-    }
-
-    private static double reputationFor(PublicationView view) {
-        if ("user-mateo".equals(view.authorUserId())) {
-            return 4.9;
-        }
-        return 4.8 + ((view.requestCount() % 3) * 0.1);
     }
 
     private static String providerName(String authorUserId) {

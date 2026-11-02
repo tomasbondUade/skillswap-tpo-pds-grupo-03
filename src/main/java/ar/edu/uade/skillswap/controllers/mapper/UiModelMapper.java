@@ -1,6 +1,8 @@
 package ar.edu.uade.skillswap.controllers.mapper;
 
 import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
+import ar.edu.uade.skillswap.application.model.DiscoveryData.PageRequest;
+import ar.edu.uade.skillswap.application.model.DiscoveryData.PriceRange;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
@@ -16,18 +18,21 @@ import ar.edu.uade.skillswap.model.Models;
 public final class UiModelMapper {
     public SearchQuery toSearchQuery(Models.FiltrosBusqueda filtros) {
         if (filtros == null) throw new IllegalArgumentException("Faltan los filtros de búsqueda");
+        // La UI actual no expone habilidad, precio mínimo, reputación mínima ni página (#30).
         return new SearchQuery(filtros.texto(),
                 filtros.categoria() != null && !"Todas".equals(filtros.categoria())
                         ? filtros.categoria() : null,
                 filtros.modalidad() == null ? null : toModality(filtros.modalidad()),
-                null, filtros.precioMaximo() > 0 ? filtros.precioMaximo() : null,
-                null, toSearchOrder(filtros.orden()), 0, 20);
+                null,
+                new PriceRange(null, filtros.precioMaximo() > 0 ? filtros.precioMaximo() : null),
+                null, toSearchOrder(filtros.orden()), PageRequest.FIRST);
     }
 
-    public Models.Publicacion toPublicacion(PublicationView view, String proveedor, double reputacion) {
+    public Models.Publicacion toPublicacion(PublicationView view) {
         return new Models.Publicacion(view.id(), view.title(), view.description(), view.category(),
                 toModalidad(view.modality()), view.durationMinutes(), view.priceInSkillCoins(),
-                reputacion, proveedor, view.tags().stream().toList(), toEstadoPublicacion(view.status()),
+                view.author().reputation(), view.author().displayName(), view.tags().stream().toList(),
+                toEstadoPublicacion(view.status()),
                 false, view.availability().stream()
                     .map(slot -> new Models.FranjaDisponibilidad(slot.id(), slot.startsAt(), slot.endsAt(),
                             slot.capacity() - slot.reserved()))

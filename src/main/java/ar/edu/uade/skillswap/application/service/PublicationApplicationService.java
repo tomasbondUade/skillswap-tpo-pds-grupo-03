@@ -9,8 +9,10 @@ import ar.edu.uade.skillswap.application.model.PublicationData.EditDraftCommand;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.port.in.PublicationUseCases;
 import ar.edu.uade.skillswap.application.port.out.CurrentUserProvider;
+import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
 import ar.edu.uade.skillswap.application.port.out.TransactionManager;
+import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
@@ -20,12 +22,14 @@ import java.util.Objects;
 /** Coordinates publication commands and delegates all lifecycle rules to Publication. */
 public final class PublicationApplicationService implements PublicationUseCases {
     private final PublicationRepository publications;
+    private final ProfileRepository profiles;
     private final CurrentUserProvider currentUser;
     private final TransactionManager transactions;
 
-    public PublicationApplicationService(PublicationRepository publications, CurrentUserProvider currentUser,
-                                         TransactionManager transactions) {
+    public PublicationApplicationService(PublicationRepository publications, ProfileRepository profiles,
+                                         CurrentUserProvider currentUser, TransactionManager transactions) {
         this.publications = Objects.requireNonNull(publications);
+        this.profiles = Objects.requireNonNull(profiles);
         this.currentUser = Objects.requireNonNull(currentUser);
         this.transactions = Objects.requireNonNull(transactions);
     }
@@ -35,6 +39,7 @@ public final class PublicationApplicationService implements PublicationUseCases 
         Objects.requireNonNull(command, "Faltan los datos de la publicación");
         String actor = UseCaseSupport.currentUserId(currentUser);
         return transactions.required(() -> UseCaseSupport.translateDomainFailures(() -> {
+            Profile author = authorProfile(actor);
             var builder = Publication.builder(actor)
                     .title(command.title())
                     .description(command.description())
@@ -46,7 +51,7 @@ public final class PublicationApplicationService implements PublicationUseCases 
                     .tags(command.tags());
             PublicationApplicationMapper.toAvailabilitySlots(command.availability()).forEach(builder::addAvailability);
             Publication publication = builder.build();
-            return PublicationApplicationMapper.toView(publications.save(publication));
+            return PublicationApplicationMapper.toView(publications.save(publication), author);
         }));
     }
 
@@ -60,7 +65,8 @@ public final class PublicationApplicationService implements PublicationUseCases 
                     .orElseThrow(() -> notFound("No existe la publicación indicada"));
             publication.edit(actor, command.title(), command.description(), command.category(), command.modality(),
                     command.durationMinutes(), command.capacity(), command.tags());
-            return PublicationApplicationMapper.toView(publications.save(publication));
+            Profile author = authorProfile(publication.authorUserId());
+            return PublicationApplicationMapper.toView(publications.save(publication), author);
         }));
     }
 
@@ -73,16 +79,26 @@ public final class PublicationApplicationService implements PublicationUseCases 
             Publication publication = publications.findByIdForUpdate(publicationId)
                     .orElseThrow(() -> notFound("No existe la publicación indicada"));
             transition(publication, actor, command.targetStatus(), command.reason());
-            return PublicationApplicationMapper.toView(publications.save(publication));
+            Profile author = authorProfile(publication.authorUserId());
+            return PublicationApplicationMapper.toView(publications.save(publication), author);
         }));
     }
 
     @Override
     public List<PublicationView> listMyPublications() {
         String actor = UseCaseSupport.currentUserId(currentUser);
-        return publications.findByAuthorUserId(actor).stream()
-                .map(PublicationApplicationMapper::toView)
+        List<Publication> own = publications.findByAuthorUserId(actor);
+        if (own.isEmpty()) return List.of();
+        Profile author = authorProfile(actor);
+        return own.stream()
+                .map(publication -> PublicationApplicationMapper.toView(publication, author))
                 .toList();
+    }
+
+    /** Toda publicación tiene autor con perfil (FK en la base); sin perfil no se puede publicar. */
+    private Profile authorProfile(String userId) {
+        return profiles.findByUserId(userId)
+                .orElseThrow(() -> notFound("No existe un perfil para el autor de la publicación"));
     }
 
     private static void transition(Publication publication, String actor,

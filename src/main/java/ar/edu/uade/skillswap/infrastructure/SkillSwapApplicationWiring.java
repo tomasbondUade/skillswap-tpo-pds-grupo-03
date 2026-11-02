@@ -42,14 +42,14 @@ public final class SkillSwapApplicationWiring {
             new NotificationEventObserver(new InAppNotificationGateway(notifications));
     private final RatingRepository ratings = new InMemoryRatingRepository();
     private final ProfileRepository profiles = new InMemoryProfileRepository();
-    private final PublicationRepository publications = new InMemoryPublicationRepository();
+    private final PublicationRepository publications = new InMemoryPublicationRepository(profiles);
     private final CurrentUserProvider currentUser = new StaticCurrentUserProvider("user-mateo");
     private final TransactionManager transactions = new SynchronousTransactionManager();
     private final RecommendationStrategy recommendationStrategy = new SkillAffinityStrategy();
     private final RefundPolicy refundPolicy = new StandardRefundPolicy();
 
     private final ProfileApplicationService profileService = new ProfileApplicationService(profiles, currentUser, transactions);
-    private final PublicationApplicationService publicationService = new PublicationApplicationService(publications, currentUser, transactions);
+    private final PublicationApplicationService publicationService = new PublicationApplicationService(publications, profiles, currentUser, transactions);
     private final DiscoveryApplicationService discoveryService = new DiscoveryApplicationService(publications, profiles, currentUser, recommendationStrategy);
     private final BookingApplicationService bookingService = new BookingApplicationService(
             publications, bookings, wallets, refundPolicy, currentUser, transactions, events);

@@ -14,7 +14,10 @@ import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.RecommendationStrategy;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** Orchestrates search and personalized discovery through application ports. */
 public final class DiscoveryApplicationService implements DiscoveryUseCases {
@@ -32,14 +35,17 @@ public final class DiscoveryApplicationService implements DiscoveryUseCases {
         this.recommendationStrategy = Objects.requireNonNull(recommendationStrategy);
     }
 
+    /**
+     * Valida que haya criterios, delega filtros, orden y paginación en el repositorio y completa
+     * cada resultado con los datos públicos de su autor.
+     */
     @Override
     public PageResult<PublicationView> search(SearchQuery query) {
-        Objects.requireNonNull(query, "Faltan los criterios de búsqueda");
+        if (query == null) {
+            throw new ApplicationException(ApplicationErrorCode.VALIDATION, "Faltan los criterios de búsqueda");
+        }
         PageResult<Publication> result = publications.searchPublished(query);
-        List<PublicationView> items = result.items().stream()
-                .map(PublicationApplicationMapper::toView)
-                .toList();
-        return new PageResult<>(items, result.page(), result.size(), result.totalElements());
+        return new PageResult<>(toViews(result.items()), result.page(), result.size(), result.totalElements());
     }
 
     @Override
@@ -56,11 +62,7 @@ public final class DiscoveryApplicationService implements DiscoveryUseCases {
             throw new ApplicationException(ApplicationErrorCode.INVALID_STATE,
                     "El perfil debe estar activo para recibir recomendaciones");
         }
-        List<PublicationView> recommendations = recommendationStrategy
-                .recommend(profile, publications.findPublished(), limit).stream()
-                .map(PublicationApplicationMapper::toView)
-                .toList();
-        return recommendations;
+        return toViews(recommendationStrategy.recommend(profile, publications.findPublished(), limit));
     }
 
     @Override
@@ -70,5 +72,26 @@ public final class DiscoveryApplicationService implements DiscoveryUseCases {
                 .distinct()
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
+    }
+
+    /** Arma las vistas leyendo los perfiles de todos los autores en una sola lectura. */
+    private List<PublicationView> toViews(List<Publication> items) {
+        Map<String, Profile> authors = profiles.findByUserIds(items.stream()
+                        .map(Publication::authorUserId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Profile::userId, Function.identity()));
+        return items.stream()
+                .map(publication -> PublicationApplicationMapper.toView(publication, authorOf(publication, authors)))
+                .toList();
+    }
+
+    /** La base garantiza que todo autor tiene perfil (FK); si falta, los datos están inconsistentes. */
+    private static Profile authorOf(Publication publication, Map<String, Profile> authors) {
+        Profile author = authors.get(publication.authorUserId());
+        if (author == null) {
+            throw new IllegalStateException("La publicación " + publication.id() + " no tiene perfil de autor");
+        }
+        return author;
     }
 }
