@@ -29,7 +29,7 @@ Los contratos actuales son `ProfileUseCases`, `PublicationUseCases`, `DiscoveryU
 | --- | --- | --- |
 | ProfileService | Identificar al actor, cargar/guardar perfil y proyectar `ProfileView`. | Titularidad, perfil activo, campos, disponibilidad y reputación derivada. |
 | PublicationService | Crear/cargar/guardar publicaciones y convertir comandos/resultados. | Edición de borrador, permisos, disponibilidad y transiciones de estado. |
-| DiscoveryService | Validar criterios, consultar resultados paginados con `PublicationRepository.searchPublished` y completarlos con los datos del autor (#16, ver `decision-busqueda.md`); aplicar la recomendación elegida, también con los datos del autor. | Criterios de recomendación delegados a `RecommendationStrategy`. |
+| DiscoveryService | Validar contexto, consultar resultados paginados y aplicar recomendación elegida. | Criterios de recomendación delegados a `RecommendationStrategy`. |
 | BookingService | En una transacción, verificar actor, reservar franja, cambiar wallet y persistir el booking. | Participantes, transiciones, pago permitido, cancelación, reintegro y reprogramación. |
 | WalletService | Leer la billetera del usuario autenticado y mapear el resultado. | Reglas de saldo, monto y registro de movimientos. |
 | RatingService | Verificar unicidad con el repositorio, cargar booking/perfil y actualizar datos relacionados atómica y consistentemente. | Contratación completada, autor participante, puntaje y promedio del perfil. |

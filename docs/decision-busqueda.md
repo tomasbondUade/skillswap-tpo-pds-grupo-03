@@ -15,7 +15,7 @@ La consigna (§4.3) pide buscar publicaciones por texto, categoría, modalidad, 
 2. **Toda `PublicationView` trae a su autor.** La base exige que toda publicación tenga un perfil de autor (FK `publications.author_user_id → profiles.user_id`), así que la vista lleva siempre un `AuthorView` (nombre, reputación y cantidad de calificaciones). La usan los seis casos de uso que devuelven publicaciones: `search` y `recommend` (#16/#17) y los de gestión de `PublicationUseCases` (#15). El dominio no cambia: `Publication` sigue referenciando al autor por id, como corresponde entre agregados.
 3. **Los datos del autor se leen sin N+1.** En búsqueda y recomendaciones, `DiscoveryApplicationService` lee los perfiles de todos los autores de la página con `ProfileRepository.findByUserIds`, que es abstracto: cada implementación debe resolverlo en una lectura (en JPA, un `IN`). En gestión el autor es el propio usuario, así que `PublicationApplicationService` hace un único `findByUserId`. Crear un borrador sin perfil devuelve `NOT_FOUND`, igual que lo rechazaría la FK de la base.
 4. **El filtro y el orden por autor se resuelven en el repositorio.** La búsqueda necesita la reputación y el estado del autor. En JPA es un join con la tabla de perfiles dentro de la consulta. En memoria, `InMemoryPublicationRepository` recibe el puerto `ProfileRepository` (no otra implementación concreta) y lee los perfiles de los autores en una sola llamada; es el equivalente en memoria de ese join y solo afecta al adaptador de demo y tests.
-5. **Criterios autovalidados**, con la convención de `main`: `SearchQuery` recorta espacios, y el texto vacío o la categoría o habilidad nulas o en blanco significan "sin filtro". El rango de precio se agrupa en `PriceRange` y la página en `PageRequest`. Las validaciones lanzan `IllegalArgumentException`, como el resto de los comandos; `UiErrorMapper` las traduce a `VALIDACION`.
+5. **Criterios autovalidados**, con la forma y la convención de `main`: `SearchQuery` mantiene sus campos (se agrega `skill`), recorta espacios, y el texto vacío o la categoría o habilidad nulas o en blanco significan "sin filtro". Las validaciones de rango de precio, reputación y página siguen en su constructor y lanzan `IllegalArgumentException`, como el resto de los comandos; `UiErrorMapper` las traduce a `VALIDACION`.
 6. **Sin transacción en el service**, igual que las demás lecturas del proyecto (`listMyBookings`, `viewMyWallet`, etc.). La página y el total se resuelven en una sola llamada a `searchPublished`; la implementación JPA puede ejecutar esa consulta como de solo lectura.
 
 ## Comportamiento de `searchPublished`
@@ -60,15 +60,17 @@ La consigna (§4.3) pide buscar publicaciones por texto, categoría, modalidad, 
 
 | Cambio | Qué hay que adaptar |
 | --- | --- |
-| `SearchQuery` agrupa precio y página | `search.minimumPrice()` / `maximumPrice()` pasan a `search.price().minimum()` / `maximum()`; `search.page()` / `size()` pasan a `search.page().page()` / `size()`. Se agrega `search.skill()`. |
+| `SearchQuery` agrega `skill` | Los accessors existentes no cambian; el constructor recibe `skill` después de `modality`. Filtrar por `search.skill()`. |
 | `ProfileRepository.findByUserIds` es abstracto | `JpaProfileRepository` debe implementarlo con una única consulta `IN`. |
 | Contrato de `searchPublished` | `JpaPublicationRepository` debe extender `PublicationSearchContract`. Hoy le falta: filtro por habilidad, `BEST_RATING` por reputación (ordena por fecha), texto en etiquetas, exclusión de autores dados de baja y desempate por id. |
-| Rendimiento | Unir con `profile` (LEFT JOIN) para filtrar y ordenar por reputación; cargar etiquetas y franjas sin N+1; marcar la consulta como de solo lectura. Índices sugeridos: `(status, created_at)`, `(status, base_price)`, `(status, category)`, `publication_tag(tag)`, `profile(user_id)` único. |
+| Rendimiento | Unir con `profiles` (JOIN, garantizado por la FK) para filtrar y ordenar por reputación y excluir autores dados de baja; cargar etiquetas y franjas sin N+1; marcar la consulta como de solo lectura. Índices sugeridos: `(status, created_at)`, `(status, base_price)`, `(status, category)`, `publication_tag(tag)`, `profile(user_id)` único. |
 | Acentos | Collation `utf8mb4_0900_ai_ci` en las columnas de texto buscadas. |
 
 **#15 (casos de uso de publicaciones).** `PublicationApplicationService` recibe `ProfileRepository` y sus vistas incluyen al autor; crear un borrador requiere que el usuario tenga perfil.
 
 **#17 (recomendaciones).** `recommend` mantiene su firma (`List<PublicationView>`); ahora cada vista incluye al autor.
+
+**#35 (trazabilidad).** `auditoria-patrones-y-grasp.md` e `informe-diseno.md` describen el corte `36b07b0` y no se modifican aquí; la fila de #16 se actualiza en el próximo corte completo.
 
 **#30 (controllers de búsqueda).** La UI sigue recibiendo `List<Publicacion>` de la primera página. Exponer la paginación y los filtros nuevos (habilidad, precio mínimo, reputación mínima, página) en `BusquedaController` corresponde a ese issue.
 
@@ -76,7 +78,7 @@ La consigna (§4.3) pide buscar publicaciones por texto, categoría, modalidad, 
 
 | Prueba | Cubre |
 | --- | --- |
-| `SearchQueryTest` | Valores por defecto, recorte de espacios y validación de texto, reputación, rango de precio y paginación. |
+| `SearchQueryTest` | Valores por defecto, recorte de espacios y validación de texto, reputación, rango de precio y página. |
 | `PublicationSearchContract` / `InMemoryPublicationSearchTest` | Visibilidad, cada filtro, filtros en blanco, combinaciones, órdenes y desempates, paginación completa. |
 | `DiscoveryApplicationServiceTest` | Delegación sin modificar criterios, autor en una sola lectura de perfiles (búsqueda y recomendaciones), autor sin perfil como inconsistencia, validación, propagación de fallas, búsqueda sin autenticación. |
 | `PublicationApplicationServiceTest` | Vistas de gestión con autor, borrador sin perfil rechazado, listado vacío sin perfil. |
