@@ -9,6 +9,9 @@ public final class DiscoveryData {
     /** Orden de los resultados; la semántica de cada uno está en {@code docs/decision-busqueda.md}. */
     public enum SearchOrder { RELEVANCE, BEST_RATING, LOWEST_PRICE, MOST_RECENT }
 
+    /** Public author summary, without exposing a domain entity or notification preferences. */
+    public record AuthorView(String userId, String displayName, double reputation) {}
+
     /**
      * Criterios de búsqueda del catálogo público. Un texto, categoría o habilidad vacíos y un
      * filtro nulo significan "sin filtro". Semántica completa en {@code docs/decision-busqueda.md}.

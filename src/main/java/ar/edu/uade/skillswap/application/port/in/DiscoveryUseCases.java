@@ -20,4 +20,5 @@ public interface DiscoveryUseCases {
     PageResult<PublicationView> search(SearchQuery query);
     List<PublicationView> recommend(int limit);
     List<String> categories();
+    ar.edu.uade.skillswap.application.model.DiscoveryData.AuthorView author(String userId);
 }

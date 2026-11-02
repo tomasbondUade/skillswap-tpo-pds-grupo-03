@@ -30,12 +30,21 @@ public final class WiredUiControllers implements UiControllers,
         UiControllers.NotificacionController,
         UiControllers.PerfilController {
 
-    private final SkillSwapApplicationWiring wiring = new SkillSwapApplicationWiring();
+    private final SkillSwapApplicationWiring wiring;
+    private final BusquedaUiController searchController;
+
+    public WiredUiControllers() {
+        this(new SkillSwapApplicationWiring());
+    }
+
+    public WiredUiControllers(SkillSwapApplicationWiring wiring) {
+        this.wiring = java.util.Objects.requireNonNull(wiring);
+        searchController = new BusquedaUiController(
+                wiring.discoveryService(), wiring.currentUserProvider(), operations);
+    }
     private final UiModelMapper mapper = new UiModelMapper();
     private final UiOperationExecutor operations = new UiOperationExecutor();
     private final Map<String, Models.Publicacion> publicationCache = new HashMap<>();
-    private final BusquedaUiController searchController =
-            new BusquedaUiController(wiring.discoveryService(), wiring.currentUserProvider(), operations);
 
     @Override
     public BusquedaController busqueda() {
@@ -270,8 +279,8 @@ public final class WiredUiControllers implements UiControllers,
                 .orElseThrow(() -> new ApplicationException(ApplicationErrorCode.NOT_FOUND, "Contratación inexistente"));
     }
 
-    private static String providerName(String authorUserId) {
-        return "user-mateo".equals(authorUserId) ? "Mateo Silva" : "Mentor SkillSwap";
+    private String providerName(String authorUserId) {
+        return wiring.discoveryService().author(authorUserId).displayName();
     }
 
 }

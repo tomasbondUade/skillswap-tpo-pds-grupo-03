@@ -3,6 +3,7 @@ package ar.edu.uade.skillswap.application.service;
 import ar.edu.uade.skillswap.application.error.ApplicationErrorCode;
 import ar.edu.uade.skillswap.application.error.ApplicationException;
 import ar.edu.uade.skillswap.application.mapper.PublicationApplicationMapper;
+import ar.edu.uade.skillswap.application.model.DiscoveryData.AuthorView;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.PageResult;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
@@ -93,5 +94,14 @@ public final class DiscoveryApplicationService implements DiscoveryUseCases {
             throw new IllegalStateException("La publicación " + publication.id() + " no tiene perfil de autor");
         }
         return author;
+    }
+
+    @Override
+    public AuthorView author(String userId) {
+        String id = UseCaseSupport.requiredId(userId, "autor");
+        Profile profile = profiles.findByUserId(id).orElseThrow(() ->
+                new ApplicationException(ApplicationErrorCode.NOT_FOUND, "No existe el perfil del autor"));
+        return new AuthorView(
+                profile.userId(), profile.displayName(), profile.reputation());
     }
 }

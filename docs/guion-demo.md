@@ -32,7 +32,7 @@ La demo integra los servicios y reglas disponibles, pero todavía no es una entr
 - Las solicitudes usan un objetivo fijo y el primer horario disponible; no permiten elegir franja ni escribir un mensaje propio.
 - El pago debita SkillCoins y los mueve a una wallet de custodia; la finalización libera el saldo al proveedor y la cancelación pagada aplica `StandardRefundPolicy`, devuelve la parte correspondiente al cliente y liquida el remanente al proveedor. Son saldos ficticios y no existe pasarela de pago.
 - El usuario autenticado es fijo (`user-mateo`), por lo que la interfaz no puede operar como proveedor en contrataciones de otros usuarios.
-- `SynchronousTransactionManager` no aporta rollback ni bloqueo; el estado se pierde al reiniciar.
+- En el modo predeterminado en memoria, `SynchronousTransactionManager` no aporta rollback ni bloqueo y el estado se pierde al reiniciar. Con `--persistence=jpa` se usa `JpaTransactionManager` y MySQL; la configuración se detalla en el README.
 - La pantalla no permite crear una calificación; la reputación y las reseñas siguen siendo de demostración.
 
-La persistencia JPA/MySQL, migraciones y garantías de rollback/concurrencia de producción siguen pendientes. Los eventos Observer y la bandeja in-app están integrados en memoria; no hay proveedor externo ni cambio de sesión para recorrer el flujo completo con dos usuarios desde la UI.
+El modo JPA/MySQL está disponible y tiene pruebas de migraciones, rollback y carreras de cupos/pagos/calificaciones, más una prueba de reinicio; ver `pruebas-mysql.md`. La demo en memoria permanece disponible. Los proveedores de email/push son simulados y la identidad de esta rama es fija; el selector y la calificación desde Swing se integran por separado en #65. El recorrido visual completo y las pruebas de carga de producción siguen fuera de esta validación.
