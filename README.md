@@ -62,7 +62,7 @@ src/main/java/ar/edu/uade/skillswap/
 └── ui/           # Interfaz Java Swing
 ```
 
-El `pom.xml` declara Hibernate, MySQL y Flyway, pero todavía no hay adaptadores JPA, migraciones ni conexiones a esos servicios. La aplicación usa exclusivamente repositorios en memoria.
+Esta rama incorpora adaptadores JPA y migraciones Flyway V1–V3. La demo Swing sigue usando repositorios en memoria. La suite de integración utiliza la unidad JPA de la aplicación contra MySQL real; los pasos para ejecutarla, sus escenarios y límites están en [Pruebas de MySQL](docs/pruebas-mysql.md). Se habilita con `mvn -Pmysql-it clean test` y requiere las variables de conexión de pruebas allí documentadas. Sin ese perfil, las pruebas de MySQL se omiten explícitamente.
 
 ## Flujo de trabajo
 

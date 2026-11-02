@@ -8,6 +8,7 @@ import ar.edu.uade.skillswap.infrastructure.persistence.entity.WalletEntity;
 import ar.edu.uade.skillswap.infrastructure.persistence.entity.WalletLedgerEntity;
 
 import java.util.List;
+import java.util.Comparator;
 
 public final class WalletMapper {
 
@@ -23,10 +24,12 @@ public final class WalletMapper {
         entity.setUserId(wallet.userId());
         entity.setBalance(wallet.balance().amount());
 
+        int movementIndex = 0;
         for (LedgerEntry movement : wallet.movements()) {
             WalletLedgerEntity movementEntity = new WalletLedgerEntity();
 
             movementEntity.setId(movement.id());
+            movementEntity.setMovementIndex(movementIndex++);
             movementEntity.setConcept(movement.concept());
             movementEntity.setAmount(movement.amount());
             movementEntity.setResultingBalance(movement.resultingBalance());
@@ -44,6 +47,7 @@ public final class WalletMapper {
         }
 
         List<LedgerEntry> movements = entity.getMovements().stream()
+                .sorted(Comparator.comparingInt(WalletLedgerEntity::getMovementIndex))
                 .map(movement -> new LedgerEntry(
                         movement.getId(),
                         movement.getConcept(),

@@ -110,6 +110,7 @@ public final class JpaWalletRepository extends JpaRepositorySupport
 
             WalletLedgerEntity newMovement = new WalletLedgerEntity();
             newMovement.setId(movement.id());
+            newMovement.setMovementIndex(existingById.size());
             newMovement.setConcept(movement.concept());
             newMovement.setAmount(movement.amount());
             newMovement.setResultingBalance(
@@ -121,14 +122,12 @@ public final class JpaWalletRepository extends JpaRepositorySupport
         }
 
         entity.getMovements().sort(
-                Comparator.comparing(WalletLedgerEntity::getOccurredAt)
-                        .thenComparing(WalletLedgerEntity::getId));
+                Comparator.comparingInt(WalletLedgerEntity::getMovementIndex));
     }
 
     private static Wallet toDomain(WalletEntity entity) {
         entity.getMovements().sort(
-                Comparator.comparing(WalletLedgerEntity::getOccurredAt)
-                        .thenComparing(WalletLedgerEntity::getId));
+                Comparator.comparingInt(WalletLedgerEntity::getMovementIndex));
 
         return WalletMapper.toDomain(entity);
     }

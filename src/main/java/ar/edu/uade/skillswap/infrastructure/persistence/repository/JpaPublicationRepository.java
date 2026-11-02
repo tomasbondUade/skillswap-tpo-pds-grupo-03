@@ -53,12 +53,24 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
     public Optional<Publication> findByIdForUpdate(String publicationId) {
         Objects.requireNonNull(publicationId, "Falta el ID de la publicación");
 
-        return query(em -> Optional.ofNullable(
-                        em.find(
-                                PublicationEntity.class,
-                                publicationId,
-                                LockModeType.PESSIMISTIC_WRITE))
-                .map(PublicationMapper::toDomain));
+        return query(em -> {
+            PublicationEntity entity = em.find(PublicationEntity.class,
+                    publicationId, LockModeType.PESSIMISTIC_WRITE);
+            if (entity == null) return Optional.empty();
+
+            // Under MySQL REPEATABLE READ a prior booking/history read may have
+            // established an old snapshot. Locking the parent alone does not
+            // refresh its availability rows: read and lock the actual counters.
+            em.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
+            em.createQuery("SELECT s FROM PublicationAvailabilityEntity s "
+                            + "WHERE s.publication.id = :id ORDER BY s.id",
+                            PublicationAvailabilityEntity.class)
+                    .setParameter("id", publicationId)
+                    .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                    .getResultList()
+                    .forEach(slot -> em.refresh(slot, LockModeType.PESSIMISTIC_WRITE));
+            return Optional.of(PublicationMapper.toDomain(entity));
+        });
     }
 
     @Override
@@ -210,7 +222,7 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
             Root<PublicationEntity> publication,
             SearchOrder order) {
 
-        return switch (order) {
+        List<jakarta.persistence.criteria.Order> orders = new ArrayList<>(switch (order) {
             case LOWEST_PRICE -> List.of(
                     cb.asc(publication.get("basePrice")),
                     cb.desc(publication.get("createdAt")));
@@ -221,7 +233,10 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
             case RELEVANCE -> List.of(
                     cb.desc(publication.get("requestCount")),
                     cb.desc(publication.get("createdAt")));
-        };
+        });
+        // A unique final key keeps page boundaries stable when prices/dates tie.
+        orders.add(cb.asc(publication.get("id")));
+        return orders;
     }
 
     @Override

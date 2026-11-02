@@ -9,7 +9,28 @@
 
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
+        <!-- Explicit registration also works in plain Java SE without classpath scanning. -->
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.ProfileEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.ProfileSkillEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.ProfileInterestEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.ProfileNotificationChannelEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.ProfileAvailabilityEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.PublicationEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.PublicationTagEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.PublicationAvailabilityEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.PublicationStatusHistoryEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.BookingEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.BookingStatusHistoryEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.WalletEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.WalletLedgerEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.RatingEntity</class>
+        <class>ar.edu.uade.skillswap.infrastructure.persistence.entity.NotificationEntity</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
         <properties>
+            <!-- JDBC READ_COMMITTED: after acquiring an aggregate lock, lazy
+                 child reads must see the preceding lock holder's commit. -->
+            <property name="hibernate.connection.isolation" value="2"/>
             <property name="hibernate.hbm2ddl.auto"
                       value="validate"/>
 

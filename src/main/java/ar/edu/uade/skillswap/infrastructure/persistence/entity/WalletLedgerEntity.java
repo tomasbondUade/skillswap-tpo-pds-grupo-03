@@ -32,6 +32,17 @@ public class WalletLedgerEntity {
     @Column(name = "resulting_balance", nullable = false)
     private int resultingBalance;
 
+    @Column(name = "movement_index", nullable = false)
+    private int movementIndex;
+
+    public int getMovementIndex() {
+        return movementIndex;
+    }
+
+    public void setMovementIndex(int movementIndex) {
+        this.movementIndex = movementIndex;
+    }
+
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;
 
