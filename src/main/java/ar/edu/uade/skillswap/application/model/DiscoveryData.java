@@ -8,6 +8,9 @@ public final class DiscoveryData {
 
     public enum SearchOrder { RELEVANCE, BEST_RATING, LOWEST_PRICE, MOST_RECENT }
 
+    /** Public author summary, without exposing a domain entity or notification preferences. */
+    public record AuthorView(String userId, String displayName, double reputation) {}
+
     public record SearchQuery(String text, String category, Modality modality,
                               Integer minimumPrice, Integer maximumPrice,
                               Double minimumReputation, SearchOrder order,

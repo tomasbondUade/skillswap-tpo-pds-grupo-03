@@ -1,17 +1,13 @@
 package ar.edu.uade.skillswap.application.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import ar.edu.uade.skillswap.application.model.BookingData.BookingCommand;
-import ar.edu.uade.skillswap.application.model.BookingData.CancelCommand;
-import ar.edu.uade.skillswap.application.model.BookingData.RequestCommand;
-import ar.edu.uade.skillswap.application.model.BookingData.RejectCommand;
-import ar.edu.uade.skillswap.application.model.BookingData.RescheduleCommand;
+import ar.edu.uade.skillswap.application.error.ApplicationErrorCode;
+import ar.edu.uade.skillswap.application.error.ApplicationException;
 import ar.edu.uade.skillswap.application.event.DomainEvent;
+import ar.edu.uade.skillswap.application.model.BookingData.BookingCommand;
 import ar.edu.uade.skillswap.application.port.out.BookingRepository;
+import ar.edu.uade.skillswap.application.port.out.CurrentUserProvider;
+import ar.edu.uade.skillswap.application.port.out.DomainEventPublisher;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
-import ar.edu.uade.skillswap.application.port.out.TransactionManager;
 import ar.edu.uade.skillswap.application.port.out.WalletRepository;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Booking;
@@ -20,402 +16,300 @@ import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.model.Wallet;
-import ar.edu.uade.skillswap.domain.policy.StandardRefundPolicy;
+import ar.edu.uade.skillswap.domain.policy.RefundPolicy;
+import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
+import ar.edu.uade.skillswap.application.model.PageResult;
+import ar.edu.uade.skillswap.application.port.out.TransactionManager;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BookingApplicationServiceTest {
     @Test
-    void requestsAcceptsPaysStartsAndCompletesABooking() {
-        Publication publication = Publication.builder("provider")
-                .title("Java avanzado")
-                .description("Mentoría")
-                .category("Tecnología")
-                .modality(Modality.REMOTE)
-                .durationMinutes(60)
-                .capacity(2)
-                .basePrice(new SkillCoins(100))
-                .availability(List.of(slot()))
-                .build();
-        publication.publish("provider");
+    void noReservaOtroCupoSiLaContratacionYaFueAceptada() {
+        Fixture fixture = new Fixture(2);
+        fixture.service.accept(new BookingCommand(fixture.booking.id()));
+        assertEquals(1, fixture.publication.availability().get(0).remaining());
 
-        var publications = new InMemoryPublications(publication);
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("buyer", 250));
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        List<DomainEvent> events = new ArrayList<>();
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer");
-        var service = new BookingApplicationService(publications, bookings, wallets,
-            new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), events::add);
+        var error = assertThrows(ApplicationException.class,
+                () -> fixture.service.accept(new BookingCommand(fixture.booking.id())));
 
-        var requested = service.request(new RequestCommand(publication.id(), "Objetivo", publication.availability().get(0).id()));
-        assertEquals("buyer", requested.buyerUserId());
-        assertEquals("provider", requested.providerUserId());
-        assertEquals(BookingStatus.PENDING, requested.status());
+        assertEquals(ApplicationErrorCode.INVALID_STATE, error.code());
+        assertEquals(1, fixture.publication.availability().get(0).remaining());
+        assertEquals(1, fixture.publishedEvents.size());
+    }
 
-        currentUser.set("provider");
-        var accepted = service.accept(new BookingCommand(requested.id()));
-        assertEquals(BookingStatus.ACCEPTED, accepted.status());
 
-        currentUser.set("buyer");
-        var paid = service.pay(new BookingCommand(requested.id()));
-        assertEquals(BookingStatus.CONFIRMED, paid.status());
-        assertEquals(150, wallets.findByUserId("buyer").orElseThrow().balance().amount());
-        assertEquals(100, wallets.findByUserId(BookingApplicationService.ESCROW_WALLET_ID).orElseThrow().balance().amount());
-        assertThrows(RuntimeException.class, () -> service.pay(new BookingCommand(requested.id())));
-        assertEquals(150, wallets.findByUserId("buyer").orElseThrow().balance().amount());
-        assertEquals(3, events.size());
+    @Test
+    void acceptsBookingAndReservesPublicationSlot() {
+        Fixture fixture = new Fixture();
 
-        currentUser.set("provider");
-        var started = service.start(new BookingCommand(requested.id()));
-        assertEquals(BookingStatus.IN_PROGRESS, started.status());
+        var view = fixture.service.accept(
+                new BookingCommand(fixture.booking.id()));
 
-        currentUser.set("buyer");
-        var completed = service.complete(new BookingCommand(requested.id()));
-        assertEquals(BookingStatus.COMPLETED, completed.status());
-        assertEquals(100, wallets.findByUserId("provider").orElseThrow().balance().amount());
-        assertEquals(0, wallets.findByUserId(BookingApplicationService.ESCROW_WALLET_ID).orElseThrow().balance().amount());
-        assertEquals(List.of("booking.requested", "booking.accepted", "booking.paid",
-            "booking.started", "booking.completed"), events.stream().map(DomainEvent::name).toList());
+        assertEquals(BookingStatus.ACCEPTED, view.status());
+        assertEquals(
+                0,
+                fixture.publication.availability().get(0).remaining());
+
+        assertEquals(1, fixture.publishedEvents.size());
+        assertEquals(
+                "booking.accepted",
+                fixture.publishedEvents.get(0).name());
+        assertEquals(1, fixture.transactions.operations);
     }
 
     @Test
-    void refundsPaidBookingUsingTheConfiguredPolicy() {
-        Publication publication = Publication.builder("provider")
-                .title("Java avanzado")
-                .description("Mentoría")
-                .category("Tecnología")
-                .modality(Modality.REMOTE)
-                .durationMinutes(60)
-                .capacity(2)
-                .basePrice(new SkillCoins(100))
-                .availability(List.of(slot()))
-                .build();
-        publication.publish("provider");
+    void paysBookingAndUpdatesBothWallets() {
+        Fixture fixture = new Fixture();
+        fixture.acceptBooking();
 
-        var publications = new InMemoryPublications(publication);
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("buyer", 250));
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer");
-        var service = new BookingApplicationService(publications, bookings, wallets,
-            new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), event -> {});
+        fixture.actor = "buyer";
 
-        var requested = service.request(new RequestCommand(publication.id(), "Objetivo", publication.availability().get(0).id()));
-        currentUser.set("provider");
-        service.accept(new BookingCommand(requested.id()));
-        currentUser.set("buyer");
-        service.pay(new BookingCommand(requested.id()));
-        var canceled = service.cancel(new CancelCommand(requested.id(), "Cambio de planes"));
+        var view = fixture.service.pay(
+                new BookingCommand(fixture.booking.id()));
 
-        assertEquals(100, canceled.refundInSkillCoins());
-        assertEquals(250, wallets.findByUserId("buyer").orElseThrow().balance().amount());
-        assertEquals(0, wallets.findByUserId(BookingApplicationService.ESCROW_WALLET_ID).orElseThrow().balance().amount());
-        assertEquals(0, publication.availability().get(0).reserved());
-        int buyerMovementCount = wallets.findByUserId("buyer").orElseThrow().movements().size();
-        assertThrows(RuntimeException.class,
-            () -> service.cancel(new CancelCommand(requested.id(), "Cancelación repetida")));
-        assertEquals(buyerMovementCount, wallets.findByUserId("buyer").orElseThrow().movements().size());
+        assertEquals(BookingStatus.CONFIRMED, view.status());
+        assertEquals(30, fixture.wallets.get("buyer").balance().amount());
+        assertEquals(30, fixture.wallets.get("provider").balance().amount());
+
+        assertEquals(1, fixture.publishedEvents.size());
+        assertEquals("booking.paid", fixture.publishedEvents.get(0).name());
     }
 
     @Test
-    void paysTheNonRefundedEscrowRemainderToProviderOnPartialRefund() {
-        LocalDateTime startsAt = LocalDateTime.now().plusHours(36);
-        AvailabilitySlot slot = AvailabilitySlot.of(startsAt, startsAt.plusHours(1), 2);
-        Publication publication = Publication.builder("provider")
-                .title("Java avanzado")
-                .description("Mentoría")
-                .category("Tecnología")
-                .modality(Modality.REMOTE)
-                .durationMinutes(60)
-                .capacity(2)
-                .basePrice(new SkillCoins(100))
-                .availability(List.of(slot))
-                .build();
-        publication.publish("provider");
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("buyer", 250));
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer");
-        var service = new BookingApplicationService(new InMemoryPublications(publication), bookings, wallets,
-                new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), event -> {});
+    void rejectsPaymentWhenBuyerHasInsufficientBalance() {
+        Fixture fixture = new Fixture();
+        fixture.acceptBooking();
 
-        var requested = service.request(new RequestCommand(publication.id(), "Objetivo", slot.id()));
-        currentUser.set("provider");
-        service.accept(new BookingCommand(requested.id()));
-        currentUser.set("buyer");
-        service.pay(new BookingCommand(requested.id()));
-        var canceled = service.cancel(new CancelCommand(requested.id(), "Cambio de planes"));
+        fixture.wallets.put("buyer", Wallet.open("buyer", 5));
+        fixture.actor = "buyer";
 
-        assertEquals(50, canceled.refundInSkillCoins());
-        assertEquals(200, wallets.findByUserId("buyer").orElseThrow().balance().amount());
-        assertEquals(50, wallets.findByUserId("provider").orElseThrow().balance().amount());
-        assertEquals(0, wallets.findByUserId(BookingApplicationService.ESCROW_WALLET_ID).orElseThrow().balance().amount());
+        ApplicationException error = assertThrows(
+                ApplicationException.class,
+                () -> fixture.service.pay(
+                        new BookingCommand(fixture.booking.id())));
+
+        assertEquals(ApplicationErrorCode.VALIDATION, error.code());
+        assertEquals(5, fixture.wallets.get("buyer").balance().amount());
+        assertEquals(10, fixture.wallets.get("provider").balance().amount());
+        assertEquals(BookingStatus.ACCEPTED, fixture.booking.status());
+        assertEquals(0, fixture.publishedEvents.size());
     }
 
     @Test
-    void acceptReservesCapacityAndLeavesOverflowingRequestPending() {
-        Publication publication = Publication.builder("provider")
-                .title("Java avanzado")
-                .description("Mentoría")
-                .category("Tecnología")
-                .modality(Modality.REMOTE)
-                .durationMinutes(60)
-                .capacity(2)
-                .basePrice(new SkillCoins(100))
-                .availability(List.of(slot()))
-                .build();
-        publication.publish("provider");
+    void rejectsPaymentFromSomeoneWhoIsNotTheBuyer() {
+        Fixture fixture = new Fixture();
+        fixture.acceptBooking();
 
-        var publications = new InMemoryPublications(publication);
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer-1");
-        var service = new BookingApplicationService(publications, bookings, wallets,
-            new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), event -> {});
-        String slotId = publication.availability().get(0).id();
-        var first = service.request(new RequestCommand(publication.id(), "Objetivo", slotId));
-        currentUser.set("buyer-2");
-        var second = service.request(new RequestCommand(publication.id(), "Objetivo", slotId));
-        currentUser.set("buyer-3");
-        var third = service.request(new RequestCommand(publication.id(), "Objetivo", slotId));
+        fixture.actor = "intruder";
 
-        currentUser.set("provider");
-        service.accept(new BookingCommand(first.id()));
-        service.accept(new BookingCommand(second.id()));
-        assertEquals(2, publication.availability().get(0).reserved());
-        assertThrows(RuntimeException.class, () -> service.accept(new BookingCommand(third.id())));
-        assertEquals(BookingStatus.PENDING, bookings.findById(third.id()).orElseThrow().status());
-    }
+        ApplicationException error = assertThrows(
+                ApplicationException.class,
+                () -> fixture.service.pay(
+                        new BookingCommand(fixture.booking.id())));
 
-        @Test
-        void onlyProviderCanAcceptOrRejectAndRejectionDoesNotReserveCapacity() {
-        Publication publication = Publication.builder("provider")
-            .title("Java avanzado")
-            .description("Mentoría")
-            .category("Tecnología")
-            .modality(Modality.REMOTE)
-            .durationMinutes(60)
-            .capacity(2)
-            .basePrice(new SkillCoins(100))
-            .availability(List.of(slot()))
-            .build();
-        publication.publish("provider");
-        var publications = new InMemoryPublications(publication);
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer");
-        var service = new BookingApplicationService(publications, bookings, wallets,
-            new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), event -> {});
-
-        var requested = service.request(new RequestCommand(publication.id(), "Objetivo", publication.availability().get(0).id()));
-        assertThrows(RuntimeException.class, () -> service.accept(new BookingCommand(requested.id())));
-        assertEquals(BookingStatus.PENDING, bookings.findById(requested.id()).orElseThrow().status());
-        assertEquals(0, publication.availability().get(0).reserved());
-
-        currentUser.set("provider");
-        var rejected = service.reject(new RejectCommand(requested.id(), "No tengo disponibilidad"));
-
-        assertEquals(BookingStatus.REJECTED, rejected.status());
-        assertEquals(0, publication.availability().get(0).reserved());
-        }
-
-        @Test
-        void requestForUnavailablePublicationDoesNotCreateBooking() {
-        Publication publication = Publication.builder("provider")
-            .title("Java avanzado")
-            .description("Mentoría")
-            .category("Tecnología")
-            .modality(Modality.REMOTE)
-            .durationMinutes(60)
-            .capacity(2)
-            .basePrice(new SkillCoins(100))
-            .availability(List.of(slot()))
-            .build();
-        publication.publish("provider");
-        var bookings = new InMemoryBookings();
-        var service = new BookingApplicationService(new InMemoryPublications(publication), bookings,
-            new InMemoryWallets(), new StandardRefundPolicy(), () -> "buyer",
-            new ImmediateTransactionManager(), event -> {});
-
-        assertThrows(RuntimeException.class,
-            () -> service.request(new RequestCommand("missing-publication", "Objetivo", "missing-slot")));
-        assertEquals(0, bookings.items.size());
-        }
-
-    @Test
-    void insufficientBalanceDoesNotConfirmOrMoveFundsIntoEscrow() {
-        Publication publication = Publication.builder("provider")
-                .title("Java avanzado")
-                .description("Mentoría")
-                .category("Tecnología")
-                .modality(Modality.REMOTE)
-                .durationMinutes(60)
-                .capacity(2)
-                .basePrice(new SkillCoins(100))
-                .availability(List.of(slot()))
-                .build();
-        publication.publish("provider");
-        var publications = new InMemoryPublications(publication);
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("buyer", 20));
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer");
-        var service = new BookingApplicationService(publications, bookings, wallets,
-                new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), event -> {});
-
-        var requested = service.request(new RequestCommand(publication.id(), "Objetivo", publication.availability().get(0).id()));
-        currentUser.set("provider");
-        service.accept(new BookingCommand(requested.id()));
-        currentUser.set("buyer");
-
-        assertThrows(RuntimeException.class, () -> service.pay(new BookingCommand(requested.id())));
-        assertEquals(BookingStatus.ACCEPTED, bookings.findById(requested.id()).orElseThrow().status());
-        assertEquals(20, wallets.findByUserId("buyer").orElseThrow().balance().amount());
-        assertEquals(0, wallets.findByUserId(BookingApplicationService.ESCROW_WALLET_ID).orElseThrow().balance().amount());
+        assertEquals(ApplicationErrorCode.FORBIDDEN, error.code());
+        assertEquals(50, fixture.wallets.get("buyer").balance().amount());
+        assertEquals(10, fixture.wallets.get("provider").balance().amount());
+        assertEquals(BookingStatus.ACCEPTED, fixture.booking.status());
+        assertEquals(0, fixture.publishedEvents.size());
     }
 
     @Test
-    void reschedulingTransfersCapacityOnlyAfterBothParticipantsAccept() {
-        LocalDateTime firstStart = LocalDateTime.now().plusDays(3);
-        AvailabilitySlot firstSlot = AvailabilitySlot.of(firstStart, firstStart.plusHours(1), 2);
-        AvailabilitySlot secondSlot = AvailabilitySlot.of(firstStart.plusDays(1), firstStart.plusDays(1).plusHours(1), 2);
-        Publication publication = Publication.builder("provider")
-                .title("Java avanzado")
-                .description("Mentoría")
-                .category("Tecnología")
-                .modality(Modality.REMOTE)
-                .durationMinutes(60)
-                .capacity(2)
-                .basePrice(new SkillCoins(100))
-                .availability(List.of(firstSlot, secondSlot))
-                .build();
-        publication.publish("provider");
+    void doesNotChargeBookingTwice() {
+        Fixture fixture = new Fixture();
+        fixture.acceptBooking();
+        fixture.actor = "buyer";
 
-        var publications = new InMemoryPublications(publication);
-        var bookings = new InMemoryBookings();
-        var wallets = new InMemoryWallets();
-        wallets.save(Wallet.open("provider", 0));
-        wallets.save(Wallet.open(BookingApplicationService.ESCROW_WALLET_ID, 0));
-        AtomicReference<String> currentUser = new AtomicReference<>("buyer");
-        var service = new BookingApplicationService(publications, bookings, wallets,
-            new StandardRefundPolicy(), currentUser::get, new ImmediateTransactionManager(), event -> {});
+        fixture.service.pay(new BookingCommand(fixture.booking.id()));
 
-        var requested = service.request(new RequestCommand(publication.id(), "Objetivo", firstSlot.id()));
-        currentUser.set("provider");
-        service.accept(new BookingCommand(requested.id()));
-        service.proposeReschedule(new RescheduleCommand(requested.id(), secondSlot.id()));
-        assertEquals(1, firstSlot.reserved());
-        assertEquals(0, secondSlot.reserved());
+        ApplicationException error = assertThrows(
+                ApplicationException.class,
+                () -> fixture.service.pay(
+                        new BookingCommand(fixture.booking.id())));
 
-        currentUser.set("buyer");
-        var changed = service.acceptReschedule(new BookingCommand(requested.id()));
-
-        assertEquals(secondSlot.id(), changed.slotId());
-        assertEquals(0, firstSlot.reserved());
-        assertEquals(1, secondSlot.reserved());
+        assertEquals(ApplicationErrorCode.INVALID_STATE, error.code());
+        assertEquals(30, fixture.wallets.get("buyer").balance().amount());
+        assertEquals(30, fixture.wallets.get("provider").balance().amount());
+        assertEquals(1, fixture.publishedEvents.size());
     }
 
-    private static AvailabilitySlot slot() {
-        LocalDateTime startsAt = LocalDateTime.now().plusDays(3);
-        return AvailabilitySlot.of(startsAt, startsAt.plusHours(1), 2);
-    }
+    private static final class Fixture {
 
-    private static final class ImmediateTransactionManager implements TransactionManager {
-        @Override
-        public <T> T required(java.util.function.Supplier<T> work) {
-            return work.get();
-        }
-    }
+        private final List<DomainEvent> publishedEvents = new ArrayList<>();
+        private final Map<String, Booking> bookings = new HashMap<>();
+        private final Map<String, Publication> publications = new HashMap<>();
+        private final Map<String, Wallet> wallets = new HashMap<>();
 
-    private static final class InMemoryPublications implements PublicationRepository {
-        private final List<Publication> items = new ArrayList<>();
+        private final ImmediateTransactionManager transactions =
+                new ImmediateTransactionManager();
 
-        private InMemoryPublications(Publication publication) {
-            items.add(publication);
-        }
+        private String actor = "provider";
 
-        @Override
-        public Optional<Publication> findById(String publicationId) {
-            return items.stream().filter(item -> item.id().equals(publicationId)).findFirst();
+        private final Publication publication;
+        private final Booking booking;
+        private final BookingApplicationService service;
+
+        private Fixture() {
+            this(1);
         }
 
-        @Override
-        public Optional<Publication> findByIdForUpdate(String publicationId) {
-            return findById(publicationId);
+        private Fixture(int capacity) {
+            publication = Publication.draft(
+                    "provider",
+                    "Java",
+                    "Clases de Java",
+                    "Tecnologia",
+                    Modality.REMOTE,
+                    60,
+                    capacity,
+                    new SkillCoins(20),
+                    List.of("Java"));
+
+            LocalDateTime startsAt = LocalDateTime.now().plusDays(3);
+
+            publication.addAvailability(
+                    "provider",
+                    AvailabilitySlot.of(
+                            startsAt,
+                            startsAt.plusHours(1),
+                            capacity));
+
+            publication.publish("provider");
+
+            String slotId = publication.availability().get(0).id();
+
+            booking = Booking.request(
+                    publication,
+                    "buyer",
+                    "Aprender Java",
+                    slotId,
+                    publication.basePrice());
+
+            bookings.put(booking.id(), booking);
+            publications.put(publication.id(), publication);
+
+            wallets.put("buyer", Wallet.open("buyer", 50));
+            wallets.put("provider", Wallet.open("provider", 10));
+
+            BookingRepository bookingRepository = new BookingRepository() {
+                @Override
+                public Optional<Booking> findById(String id) {
+                    return Optional.ofNullable(bookings.get(id));
+                }
+
+                @Override
+                public Optional<Booking> findByIdForUpdate(String id) {
+                    return findById(id);
+                }
+
+                @Override
+                public List<Booking> findByParticipantUserId(String userId) {
+                    return bookings.values().stream()
+                            .filter(b -> b.buyerUserId().equals(userId)
+                                    || b.providerUserId().equals(userId))
+                            .toList();
+                }
+
+                @Override
+                public Booking save(Booking value) {
+                    bookings.put(value.id(), value);
+                    return value;
+                }
+            };
+
+            PublicationRepository publicationRepository =
+                    new PublicationRepository() {
+                @Override
+                public Optional<Publication> findById(String id) {
+                    return Optional.ofNullable(publications.get(id));
+                }
+
+                @Override
+                public Optional<Publication> findByIdForUpdate(String id) {
+                    return findById(id);
+                }
+
+                @Override
+                public List<Publication> findByAuthorUserId(String authorId) {
+                    return publications.values().stream()
+                            .filter(p -> p.authorUserId().equals(authorId))
+                            .toList();
+                }
+
+                @Override
+                public List<Publication> findPublished() {
+                    return publications.values().stream()
+                            .filter(p -> p.status().name().equals("PUBLISHED"))
+                            .toList();
+                }
+
+                @Override
+                public PageResult<Publication> searchPublished(SearchQuery query) {
+                    List<Publication> items = findPublished();
+                    return new PageResult<>(
+                            items.stream().limit(query.size()).toList(),
+                            query.page(),
+                            query.size(),
+                            items.size());
+                }
+
+                @Override
+                public Publication save(Publication value) {
+                    publications.put(value.id(), value);
+                    return value;
+                }
+            };
+
+            WalletRepository walletRepository = new WalletRepository() {
+                @Override
+                public Optional<Wallet> findByUserId(String userId) {
+                    return Optional.ofNullable(wallets.get(userId));
+                }
+
+                @Override
+                public Optional<Wallet> findByUserIdForUpdate(String userId) {
+                    return findByUserId(userId);
+                }
+
+                @Override
+                public Wallet save(Wallet wallet) {
+                    wallets.put(wallet.userId(), wallet);
+                    return wallet;
+                }
+            };
+
+            CurrentUserProvider currentUser = () -> actor;
+            DomainEventPublisher eventPublisher = publishedEvents::add;
+
+            // Estos tests no ejercitan cancelación; la política no se invoca.
+            RefundPolicy refundPolicy =
+                    (ignoredBooking, cancelledAt, sessionStartsAt) ->
+                            SkillCoins.zero();
+
+            service = new BookingApplicationService(
+                    bookingRepository,
+                    publicationRepository,
+                    walletRepository,
+                    currentUser,
+                    transactions,
+                    refundPolicy,
+                    eventPublisher);
         }
 
-        @Override
-        public List<Publication> findByAuthorUserId(String authorUserId) {
-            return items.stream().filter(item -> item.authorUserId().equals(authorUserId)).toList();
+        private void acceptBooking() {
+            publication.reserve(booking.slotId());
+            booking.accept("provider");
         }
-
-        @Override
-        public List<Publication> findPublished() {
-            return items.stream().filter(item -> item.status() != null).toList();
-        }
-
-        @Override
-        public ar.edu.uade.skillswap.application.model.PageResult<Publication> searchPublished(
-                ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery query) {
-            return new ar.edu.uade.skillswap.application.model.PageResult<>(List.of(), query.page(), query.size(), 0);
-        }
-
-        @Override
-        public Publication save(Publication publication) {
-            items.removeIf(item -> item.id().equals(publication.id()));
-            items.add(publication);
-            return publication;
-        }
-    }
-
-    private static final class InMemoryBookings implements BookingRepository {
-        private final List<Booking> items = new ArrayList<>();
-
-        @Override
-        public Optional<Booking> findById(String bookingId) {
-            return items.stream().filter(item -> item.id().equals(bookingId)).findFirst();
-        }
-
-        @Override
-        public Optional<Booking> findByIdForUpdate(String bookingId) {
-            return findById(bookingId);
-        }
-
-        @Override
-        public List<Booking> findByParticipantUserId(String userId) {
-            return items.stream().filter(item -> item.buyerUserId().equals(userId) || item.providerUserId().equals(userId)).toList();
-        }
-
-        @Override
-        public Booking save(Booking booking) {
-            items.removeIf(item -> item.id().equals(booking.id()));
-            items.add(booking);
-            return booking;
-        }
-    }
-
-    private static final class InMemoryWallets implements WalletRepository {
-        private final java.util.Map<String, Wallet> items = new java.util.HashMap<>();
-
-        @Override public Optional<Wallet> findByUserId(String userId) { return Optional.ofNullable(items.get(userId)); }
-        @Override public Optional<Wallet> findByUserIdForUpdate(String userId) { return findByUserId(userId); }
-        @Override public Wallet save(Wallet wallet) { items.put(wallet.userId(), wallet); return wallet; }
     }
 }

@@ -1,10 +1,17 @@
 package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.application.event.DomainEvent;
+import ar.edu.uade.skillswap.domain.model.Profile;
+import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
+import ar.edu.uade.skillswap.infrastructure.notification.NotificationFactory;
+import ar.edu.uade.skillswap.infrastructure.notification.email.MockEmailClient;
+import ar.edu.uade.skillswap.infrastructure.notification.push.MockPushClient;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,7 +22,11 @@ class NotificationEventObserverTest {
     void notifiesOnlyTheOtherBookingParticipantAndAllowsMultipleObservers() {
         var repository = new InMemoryNotificationRepository();
         var publisher = new InMemoryDomainEventPublisher();
-        var observer = new NotificationEventObserver(new InAppNotificationGateway(repository));
+        var profiles = new InMemoryProfileRepository();
+        profiles.save(Profile.register("provider", "Ana", "", "UTC", List.of(), List.of(),
+                Set.of(NotificationChannelType.IN_APP), List.of()));
+        var factory = new NotificationFactory(repository, new MockEmailClient(), new MockPushClient());
+        var observer = new NotificationEventObserver(profiles, factory);
         var secondObserverCalls = new AtomicInteger();
         publisher.subscribe("booking.requested", observer::onEvent);
         publisher.subscribe("booking.requested", event -> secondObserverCalls.incrementAndGet());
