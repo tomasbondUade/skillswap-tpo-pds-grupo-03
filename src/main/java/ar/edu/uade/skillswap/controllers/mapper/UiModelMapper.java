@@ -4,6 +4,7 @@ import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
+import ar.edu.uade.skillswap.application.model.PageResult;
 import ar.edu.uade.skillswap.application.model.ProfileData.ProfileView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.model.WalletData.MovementView;
@@ -20,8 +21,14 @@ public final class UiModelMapper {
                 filtros.categoria() != null && !"Todas".equals(filtros.categoria())
                         ? filtros.categoria() : null,
                 filtros.modalidad() == null ? null : toModality(filtros.modalidad()),
-                null, null, filtros.precioMaximo() > 0 ? filtros.precioMaximo() : null,
-                null, toSearchOrder(filtros.orden()), 0, 20);
+                filtros.habilidad(), filtros.precioMinimo(), filtros.precioMaximo(),
+                filtros.reputacionMinima(), toSearchOrder(filtros.orden()),
+                filtros.pagina(), filtros.tamanio());
+    }
+
+    public Models.PaginaPublicaciones toPaginaPublicaciones(PageResult<PublicationView> page) {
+        return new Models.PaginaPublicaciones(page.items().stream().map(this::toPublicacion).toList(),
+                page.page(), page.size(), page.totalElements(), page.totalPages());
     }
 
     public Models.Publicacion toPublicacion(PublicationView view) {
@@ -107,8 +114,12 @@ public final class UiModelMapper {
     }
 
     private SearchOrder toSearchOrder(String orden) {
-        if ("Mejor reputación".equals(orden)) return SearchOrder.BEST_RATING;
-        if ("Menor precio".equals(orden)) return SearchOrder.LOWEST_PRICE;
-        return SearchOrder.RELEVANCE;
+        if (orden == null || orden.isBlank() || "Relevancia".equals(orden)) return SearchOrder.RELEVANCE;
+        return switch (orden) {
+            case "Mejor reputación" -> SearchOrder.BEST_RATING;
+            case "Menor precio" -> SearchOrder.LOWEST_PRICE;
+            case "Más recientes" -> SearchOrder.MOST_RECENT;
+            default -> throw new IllegalArgumentException("Orden de búsqueda desconocido: " + orden);
+        };
     }
 }

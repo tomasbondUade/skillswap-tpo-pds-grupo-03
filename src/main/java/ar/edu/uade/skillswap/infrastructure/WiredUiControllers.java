@@ -10,6 +10,7 @@ import ar.edu.uade.skillswap.application.model.ProfileData.AvailabilityInput;
 import ar.edu.uade.skillswap.application.model.PublicationData.ChangeStatusCommand;
 import ar.edu.uade.skillswap.application.model.PublicationData.CreateDraftCommand;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
+import ar.edu.uade.skillswap.controllers.BusquedaUiController;
 import ar.edu.uade.skillswap.controllers.UiControllers;
 import ar.edu.uade.skillswap.controllers.mapper.UiModelMapper;
 import ar.edu.uade.skillswap.model.Models;
@@ -20,7 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 public final class WiredUiControllers implements UiControllers,
         UiControllers.BusquedaController,
@@ -34,6 +34,8 @@ public final class WiredUiControllers implements UiControllers,
     private final UiModelMapper mapper = new UiModelMapper();
     private final UiOperationExecutor operations = new UiOperationExecutor();
     private final Map<String, Models.Publicacion> publicationCache = new HashMap<>();
+    private final BusquedaUiController searchController =
+            new BusquedaUiController(wiring.discoveryService(), wiring.currentUserProvider(), operations);
 
     @Override
     public BusquedaController busqueda() {
@@ -66,33 +68,20 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     @Override
-    public List<Models.Publicacion> buscar(Models.FiltrosBusqueda filtros) {
-        return operations.execute(() -> {
-            var query = mapper.toSearchQuery(filtros);
-
-            return wiring.discoveryService().search(query).items().stream()
-                    .map(this::toPublicacion)
-                    .toList();
-        });
+    public Models.PaginaPublicaciones buscar(Models.FiltrosBusqueda filtros) {
+        Models.PaginaPublicaciones page = searchController.buscar(filtros);
+        page.items().forEach(this::remember);
+        return page;
     }
 
     @Override
     public List<Models.Publicacion> recomendar(String userId) {
-        return operations.execute(() -> {
-            return wiring.discoveryService().recommend(3).stream()
-                    .map(this::toPublicacion)
-                    .toList();
-        });
+        return searchController.recomendar(userId).stream().map(this::remember).toList();
     }
 
     @Override
     public List<String> categorias() {
-        return operations.execute(() -> {
-            return Stream.concat(
-                Stream.of("Todas"),
-                wiring.discoveryService().categories().stream())
-                .toList();
-        });
+        return searchController.categorias();
     }
 
     @Override
@@ -160,6 +149,7 @@ public final class WiredUiControllers implements UiControllers,
         return operations.execute(() -> {
             if (!publicationCache.containsKey(publicacionId)) {
                 buscar(new Models.FiltrosBusqueda("", "Todas", null, 0, "Relevancia"))
+                    .items()
                     .stream()
                     .filter(item -> item.id().equals(publicacionId))
                     .findFirst()
@@ -255,8 +245,12 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     private Models.Publicacion toPublicacion(PublicationView view) {
-        Models.Publicacion publication = mapper.toPublicacion(view);
-        publicationCache.put(view.id(), publication);
+        return remember(mapper.toPublicacion(view));
+    }
+
+    /** Keeps the last version shown so a booking can display the publication title. */
+    private Models.Publicacion remember(Models.Publicacion publication) {
+        publicationCache.put(publication.id(), publication);
         return publication;
     }
 

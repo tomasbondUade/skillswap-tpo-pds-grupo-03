@@ -56,15 +56,23 @@ public final class MockSkillSwapControllers implements UiControllers,
     @Override public NotificacionController notificaciones() { return this; }
     @Override public PerfilController perfiles() { return this; }
 
-    @Override public List<Publicacion> buscar(FiltrosBusqueda f) {
+    @Override public PaginaPublicaciones buscar(FiltrosBusqueda f) {
         String text = f.texto() == null ? "" : f.texto().toLowerCase(Locale.ROOT).trim();
-        return publicaciones.stream()
+        List<Publicacion> all = publicaciones.stream()
                 .filter(p -> p.estado() == EstadoPublicacion.PUBLICADA)
                 .filter(p -> text.isBlank() || (p.titulo()+p.descripcion()+String.join(" ", p.etiquetas())).toLowerCase(Locale.ROOT).contains(text))
                 .filter(p -> f.categoria() == null || f.categoria().equals("Todas") || p.categoria().equals(f.categoria()))
                 .filter(p -> f.modalidad() == null || p.modalidad() == f.modalidad())
-                .filter(p -> f.precioMaximo() <= 0 || p.precio() <= f.precioMaximo())
+                .filter(p -> f.habilidad() == null || f.habilidad().isBlank() || p.etiquetas().stream().anyMatch(t -> t.equalsIgnoreCase(f.habilidad().trim())))
+                .filter(p -> f.precioMinimo() == null || p.precio() >= f.precioMinimo())
+                .filter(p -> f.precioMaximo() == null || p.precio() <= f.precioMaximo())
+                .filter(p -> f.reputacionMinima() == null || p.reputacion() >= f.reputacionMinima())
                 .sorted(comparator(f.orden())).collect(Collectors.toList());
+        int size = Math.max(1, f.tamanio());
+        int from = Math.min(Math.max(0, f.pagina()) * size, all.size());
+        int to = Math.min(from + size, all.size());
+        int pages = all.isEmpty() ? 0 : (all.size() + size - 1) / size;
+        return new PaginaPublicaciones(all.subList(from, to), f.pagina(), size, all.size(), pages);
     }
 
     private Comparator<Publicacion> comparator(String orden) {
@@ -74,7 +82,7 @@ public final class MockSkillSwapControllers implements UiControllers,
                 .thenComparing(Publicacion::reputacion, Comparator.reverseOrder());
     }
 
-    @Override public List<Publicacion> recomendar(String userId) { return buscar(new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream().limit(3).toList(); }
+    @Override public List<Publicacion> recomendar(String userId) { return buscar(new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).items().stream().limit(3).toList(); }
     @Override public List<String> categorias() { return List.of("Todas", "Tecnología", "Diseño", "Creatividad", "Negocios", "Productividad"); }
     @Override public List<Publicacion> listarPropias(String userId) { return publicaciones.stream().filter(p -> p.proveedor().equals("Mateo Silva")).toList(); }
 
