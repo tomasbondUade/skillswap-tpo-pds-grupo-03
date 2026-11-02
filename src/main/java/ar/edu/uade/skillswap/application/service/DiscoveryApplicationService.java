@@ -71,4 +71,13 @@ public final class DiscoveryApplicationService implements DiscoveryUseCases {
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
     }
+
+    @Override
+    public ar.edu.uade.skillswap.application.model.DiscoveryData.AuthorView author(String userId) {
+        String id = UseCaseSupport.requiredId(userId, "autor");
+        Profile profile = profiles.findByUserId(id).orElseThrow(() ->
+                new ApplicationException(ApplicationErrorCode.NOT_FOUND, "No existe el perfil del autor"));
+        return new ar.edu.uade.skillswap.application.model.DiscoveryData.AuthorView(
+                profile.userId(), profile.displayName(), profile.reputation());
+    }
 }
