@@ -100,4 +100,12 @@ Concrete services are split by cohesive use-case area.
 The related subissues implement each area's orchestration;
 the domain remains responsible for its invariants.
 end note
+note right of PublicationRepository
+searchPublished(SearchQuery): PageResult<Publication>
+filters, order and pagination of the public catalog (#16).
+Executable contract: PublicationSearchContract.
+Every PublicationView includes AuthorView;
+search/recommend read authors with
+ProfileRepository.findByUserIds (one read per page).
+end note
 @enduml
