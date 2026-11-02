@@ -13,6 +13,7 @@
         <mysql.version>26.10.0</mysql.version>
         <flyway.version>13.11.1</flyway.version>
         <junit.version>6.1.3</junit.version>
+        <h2.version>2.5.252</h2.version>
     </properties>
 
     <dependencies>
@@ -41,7 +42,32 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>${h2.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>mysql-it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <skillswap.mysql.it>true</skillswap.mysql.it>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>
