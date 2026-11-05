@@ -1898,6 +1898,16 @@
                 },
                 {
                   "_type": "UMLOperation",
+                  "_id": "0USqg5SyTUWAjIrz4620pQ==",
+                  "_parent": {
+                    "$ref": "jnnAhvNJQhGPhve/hoNYCQ=="
+                  },
+                  "name": "findByUserIds",
+                  "parameters": [],
+                  "display": "+ findByUserIds(ids)"
+                },
+                {
+                  "_type": "UMLOperation",
                   "_id": "gt9mNYuXRfuDdoO5GNjuKA==",
                   "_parent": {
                     "$ref": "jnnAhvNJQhGPhve/hoNYCQ=="
@@ -2335,6 +2345,16 @@
                   },
                   "name": "PublicationView",
                   "display": "PublicationView",
+                  "visibility": "public"
+                },
+                {
+                  "_type": "UMLAttribute",
+                  "_id": "b5jaOh8mgwOYhXCvNdwYKQ==",
+                  "_parent": {
+                    "$ref": "DstiVDe7RVmKqdr5rM/SHg=="
+                  },
+                  "name": "AuthorView",
+                  "display": "AuthorView",
                   "visibility": "public"
                 }
               ],
@@ -17378,13 +17398,30 @@
                       "height": 14,
                       "text": "PublicationView",
                       "horizontalAlignment": 0
+                    },
+                    {
+                      "_type": "UMLAttributeView",
+                      "_id": "stTdDLJYUdjpMObqtWgj2w==",
+                      "_parent": {
+                        "$ref": "xaiMU9AxS6Cm2LWmvpuw9g=="
+                      },
+                      "model": {
+                        "$ref": "b5jaOh8mgwOYhXCvNdwYKQ=="
+                      },
+                      "font": "Arial;12;0",
+                      "left": 586,
+                      "top": 527,
+                      "width": 348,
+                      "height": 14,
+                      "text": "AuthorView",
+                      "horizontalAlignment": 0
                     }
                   ],
                   "font": "Arial;13;0",
                   "left": 580,
                   "top": 458,
                   "width": 360,
-                  "height": 68
+                  "height": 84
                 },
                 {
                   "_type": "UMLOperationCompartmentView",
@@ -17398,7 +17435,7 @@
                   "subViews": [],
                   "font": "Arial;13;0",
                   "left": 580,
-                  "top": 526,
+                  "top": 542,
                   "width": 360,
                   "height": 5
                 },
@@ -17440,7 +17477,7 @@
               "left": 580,
               "top": 430,
               "width": 360,
-              "height": 101,
+              "height": 117,
               "nameCompartment": {
                 "$ref": "jV1o22bKT1iXLLDqpeTwXg=="
               },
@@ -20797,13 +20834,30 @@
                       "height": 14,
                       "text": "PublicationView",
                       "horizontalAlignment": 0
+                    },
+                    {
+                      "_type": "UMLAttributeView",
+                      "_id": "/7U6Dr77cd4cvf83RNvOVQ==",
+                      "_parent": {
+                        "$ref": "X86XNckSSJ2zajA2H2JnJQ=="
+                      },
+                      "model": {
+                        "$ref": "b5jaOh8mgwOYhXCvNdwYKQ=="
+                      },
+                      "font": "Arial;12;0",
+                      "left": 376,
+                      "top": 177,
+                      "width": 318,
+                      "height": 14,
+                      "text": "AuthorView",
+                      "horizontalAlignment": 0
                     }
                   ],
                   "font": "Arial;13;0",
                   "left": 370,
                   "top": 108,
                   "width": 330,
-                  "height": 68
+                  "height": 84
                 },
                 {
                   "_type": "UMLOperationCompartmentView",
@@ -20817,7 +20871,7 @@
                   "subViews": [],
                   "font": "Arial;13;0",
                   "left": 370,
-                  "top": 176,
+                  "top": 192,
                   "width": 330,
                   "height": 5
                 },
@@ -20859,7 +20913,7 @@
               "left": 370,
               "top": 80,
               "width": 330,
-              "height": 101,
+              "height": 117,
               "nameCompartment": {
                 "$ref": "WMi7cI51S2eoggjjPXhv8Q=="
               },
@@ -22693,6 +22747,23 @@
                     },
                     {
                       "_type": "UMLOperationView",
+                      "_id": "F8bkMZ88M6iRY99xErTytA==",
+                      "_parent": {
+                        "$ref": "VegdRpEKQiKyUa1f02HSlA=="
+                      },
+                      "model": {
+                        "$ref": "0USqg5SyTUWAjIrz4620pQ=="
+                      },
+                      "font": "Arial;12;0",
+                      "left": 86,
+                      "top": 148,
+                      "width": 348,
+                      "height": 14,
+                      "text": "+ findByUserIds(ids)",
+                      "horizontalAlignment": 0
+                    },
+                    {
+                      "_type": "UMLOperationView",
                       "_id": "/5hGR4MnQTWVJKJVSo4PDA==",
                       "_parent": {
                         "$ref": "VegdRpEKQiKyUa1f02HSlA=="
@@ -22702,7 +22773,7 @@
                       },
                       "font": "Arial;12;0",
                       "left": 86,
-                      "top": 148,
+                      "top": 164,
                       "width": 348,
                       "height": 14,
                       "text": "+ save(Profile)",
@@ -22713,7 +22784,7 @@
                   "left": 80,
                   "top": 113,
                   "width": 360,
-                  "height": 52
+                  "height": 68
                 },
                 {
                   "_type": "UMLReceptionCompartmentView",
@@ -22753,7 +22824,7 @@
               "left": 80,
               "top": 80,
               "width": 360,
-              "height": 85,
+              "height": 101,
               "nameCompartment": {
                 "$ref": "LNL0kd0TSlWJdfzgPg8Dkw=="
               },

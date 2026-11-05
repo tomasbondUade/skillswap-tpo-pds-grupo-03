@@ -72,14 +72,10 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     @Override
-    public List<Models.Publicacion> buscar(Models.FiltrosBusqueda filtros) {
-        return operations.execute(() -> {
-            var query = mapper.toSearchQuery(filtros);
-
-            return wiring.discoveryService().search(query).items().stream()
-                    .map(this::toPublicacion)
-                    .toList();
-        });
+    public Models.PaginaPublicaciones buscar(Models.FiltrosBusqueda filtros) {
+        Models.PaginaPublicaciones page = searchController.buscar(filtros);
+        page.items().forEach(this::remember);
+        return page;
     }
 
     @Override

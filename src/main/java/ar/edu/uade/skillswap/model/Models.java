@@ -111,6 +111,31 @@ public final class Models {
     public record Notificacion(String id, String titulo, String detalle,
                                LocalDateTime fecha, boolean leida, String tipo) {}
 
-    public record FiltrosBusqueda(String texto, String categoria, Modalidad modalidad,
-                                  int precioMaximo, String orden) {}
+    /**
+     * Filtros de la pantalla Explorar. Los textos vacíos, "Todas" y los valores nulos significan
+     * "sin filtro". El orden usa las etiquetas de la pantalla: "Relevancia", "Mejor reputación",
+     * "Menor precio" o "Más recientes".
+     */
+    public record FiltrosBusqueda(String texto, String categoria, Modalidad modalidad, String habilidad,
+                                  Integer precioMinimo, Integer precioMaximo, Double reputacionMinima,
+                                  String orden, int pagina, int tamanio) {
+        public static final int TAMANIO_PAGINA = 20;
+
+        /** Firma usada por la UI provista: sin filtros nuevos, primera página. */
+        public FiltrosBusqueda(String texto, String categoria, Modalidad modalidad, int precioMaximo, String orden) {
+            this(texto, categoria, modalidad, null, null, precioMaximo > 0 ? precioMaximo : null, null,
+                    orden, 0, TAMANIO_PAGINA);
+        }
+    }
+
+    /** Página de resultados de búsqueda; {@code pagina} empieza en cero. */
+    public record PaginaPublicaciones(List<Publicacion> items, int pagina, int tamanio,
+                                      long total, int totalPaginas) {
+        public PaginaPublicaciones {
+            items = List.copyOf(items == null ? List.of() : items);
+        }
+
+        public boolean hayAnterior() { return pagina > 0; }
+        public boolean haySiguiente() { return pagina + 1 < totalPaginas; }
+    }
 }
