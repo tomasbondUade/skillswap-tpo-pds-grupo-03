@@ -130,7 +130,7 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
         this.notifications = Objects.requireNonNull(notifications);
         this.transactions = Objects.requireNonNull(transactions);
         this.closeResources = Objects.requireNonNull(closeResources);
-        currentUser = new IdentityProviderAdapter(identityClient);
+        currentUser = new DemoCurrentUserProvider(new IdentityProviderAdapter(identityClient));
         NotificationFactory factory = new NotificationFactory(notifications, emailClient, pushClient);
         notificationObserver = new NotificationEventObserver(profiles, factory);
         ratingNotifications = new RatingNotificationEventPublisher(profiles, factory);

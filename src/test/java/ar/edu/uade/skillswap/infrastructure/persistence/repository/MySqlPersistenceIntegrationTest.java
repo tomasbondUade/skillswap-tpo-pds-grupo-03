@@ -109,6 +109,38 @@ class MySqlPersistenceIntegrationTest {
     }
 
     @Test
+    void demoSessionCompletesBookingAndRatingThroughControllersOnJpa() {
+        initializeJpa();
+        try (var wiring = SkillSwapApplicationWiring.usingJpa(factory, new MockIdentityClient("user-mateo"),
+                new MockEmailClient(), new MockPushClient())) {
+            var ui = new WiredUiControllers(wiring);
+            assertEquals("user-mateo", ui.sesionDemo().usuarioActual());
+            int initialBalance = ui.wallet().consultarSaldo("user-mateo");
+            ui.sesionDemo().cambiarUsuario("mentor-ana");
+            assertEquals("Ana García", ui.perfiles().verPerfil("mentor-ana").nombre());
+            assertThrows(ar.edu.uade.skillswap.controllers.error.PresentationException.class,
+                    () -> ui.publicaciones().listarPropias("user-mateo"));
+            var publication = ui.publicaciones().listarPropias("mentor-ana").get(0);
+            ui.sesionDemo().cambiarUsuario("user-mateo");
+            var requested = ui.contrataciones().solicitar("user-mateo", publication.id(), "Mensaje",
+                    "Practicar", publication.franjasDisponibles().get(0).id());
+            ui.sesionDemo().cambiarUsuario("mentor-ana");
+            ui.contrataciones().aceptar("mentor-ana", requested.id());
+            ui.sesionDemo().cambiarUsuario("user-mateo");
+            ui.contrataciones().pagar("user-mateo", requested.id());
+            assertEquals(initialBalance - publication.precio(), ui.wallet().consultarSaldo("user-mateo"));
+            ui.sesionDemo().cambiarUsuario("mentor-ana");
+            ui.contrataciones().iniciar("mentor-ana", requested.id());
+            ui.sesionDemo().cambiarUsuario("user-mateo");
+            ui.contrataciones().completar("user-mateo", requested.id());
+            ui.calificaciones().calificar("user-mateo", requested.id(), 5, "Excelente");
+            ui.sesionDemo().cambiarUsuario("mentor-ana");
+            assertEquals(5.0, ui.perfiles().verPerfil("mentor-ana").reputacion());
+            assertEquals(publication.precio(), ui.wallet().consultarSaldo("mentor-ana"));
+        }
+    }
+
+    @Test
     void bestRatingOrdersByAuthorReputationBeforeDateAndPaginates() {
         initializeJpa();
         seed(1, 500);

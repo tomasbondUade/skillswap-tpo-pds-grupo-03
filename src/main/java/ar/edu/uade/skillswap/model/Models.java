@@ -106,6 +106,9 @@ public final class Models {
         }
     }
 
+    public record Calificacion(String id, String contratacionId, int puntaje,
+                               String comentario, LocalDateTime fecha) {}
+
     public record Movimiento(String concepto, LocalDateTime fecha, int importe, int saldo) {}
 
     public record Notificacion(String id, String titulo, String detalle,
