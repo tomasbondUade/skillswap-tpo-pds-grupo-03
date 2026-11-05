@@ -260,6 +260,10 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
         publications.save(publication);
     }
 
+    public CurrentUserProvider currentUserProvider() {
+        return currentUser;
+    }
+
     public ProfileApplicationService profileService() {
         return profileService;
     }

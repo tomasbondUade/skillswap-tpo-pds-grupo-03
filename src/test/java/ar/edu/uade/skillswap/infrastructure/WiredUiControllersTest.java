@@ -42,7 +42,7 @@ class WiredUiControllersTest {
     void presentaErroresDePermisosSinCambiarLaContratacion() {
         var controllers = new WiredUiControllers();
         var publication = controllers.busqueda().buscar(
-                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream()
+                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).items().stream()
                 .filter(item -> !"Mateo Silva".equals(item.proveedor())).findFirst().orElseThrow();
         var booking = controllers.contrataciones().solicitar("user-mateo", publication.id(),
                 "Hola", "Aprender", publication.franjasDisponibles().get(0).id());
@@ -73,7 +73,7 @@ class WiredUiControllersTest {
         var controllers = new WiredUiControllers();
 
         var resultados = controllers.busqueda().buscar(
-                new FiltrosBusqueda("Java", "Todas", Modalidad.REMOTA, 0, "Relevancia"));
+                new FiltrosBusqueda("Java", "Todas", Modalidad.REMOTA, 0, "Relevancia")).items();
 
         assertFalse(resultados.isEmpty());
         assertTrue(resultados.stream().anyMatch(p -> p.titulo().toLowerCase().contains("java")));
@@ -110,7 +110,7 @@ class WiredUiControllersTest {
         void conectaContratacionesWalletYNotificacionesConAplicacion() {
         var controllers = new WiredUiControllers();
         var publication = controllers.busqueda().buscar(
-                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream()
+                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).items().stream()
             .filter(item -> !"Mateo Silva".equals(item.proveedor()))
             .findFirst()
             .orElseThrow();
@@ -145,7 +145,7 @@ class WiredUiControllersTest {
 
         assertEquals(Models.EstadoPublicacion.PUBLICADA, published.estado());
         assertTrue(controllers.busqueda().buscar(
-                new FiltrosBusqueda("Mentoría de integración", "Todas", null, 0, "Relevancia"))
+                new FiltrosBusqueda("Mentoría de integración", "Todas", null, 0, "Relevancia")).items()
             .stream().anyMatch(item -> item.id().equals(draft.id())));
         }
 }

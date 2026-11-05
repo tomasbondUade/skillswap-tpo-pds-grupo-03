@@ -4,6 +4,7 @@ import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
+import ar.edu.uade.skillswap.application.model.PageResult;
 import ar.edu.uade.skillswap.application.model.ProfileData.ProfileView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.model.WalletData.MovementView;
@@ -107,8 +108,12 @@ public final class UiModelMapper {
     }
 
     private SearchOrder toSearchOrder(String orden) {
-        if ("Mejor reputación".equals(orden)) return SearchOrder.BEST_RATING;
-        if ("Menor precio".equals(orden)) return SearchOrder.LOWEST_PRICE;
-        return SearchOrder.RELEVANCE;
+        if (orden == null || orden.isBlank() || "Relevancia".equals(orden)) return SearchOrder.RELEVANCE;
+        return switch (orden) {
+            case "Mejor reputación" -> SearchOrder.BEST_RATING;
+            case "Menor precio" -> SearchOrder.LOWEST_PRICE;
+            case "Más recientes" -> SearchOrder.MOST_RECENT;
+            default -> throw new IllegalArgumentException("Orden de búsqueda desconocido: " + orden);
+        };
     }
 }
