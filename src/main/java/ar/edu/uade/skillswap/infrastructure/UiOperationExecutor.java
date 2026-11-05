@@ -1,6 +1,7 @@
 package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.controllers.error.PresentationException;
+import ar.edu.uade.skillswap.controllers.ControllerExecutor;
 import ar.edu.uade.skillswap.controllers.mapper.UiErrorMapper;
 import ar.edu.uade.skillswap.model.Models.CodigoError;
 import ar.edu.uade.skillswap.model.Models.ErrorPresentacion;
@@ -14,9 +15,10 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /** Infrastructure boundary: JPA/JDBC details never become UI messages. */
-public final class UiOperationExecutor {
+public final class UiOperationExecutor implements ControllerExecutor {
     private final UiErrorMapper errors = new UiErrorMapper();
 
+    @Override
     public <T> T execute(Supplier<T> operation) {
         try {
             return operation.get();

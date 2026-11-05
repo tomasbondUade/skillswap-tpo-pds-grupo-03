@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -185,6 +186,11 @@ class RatingNotificationEventPublisherTest {
         @Override
         public Optional<Profile> findByUserIdForUpdate(String userId) {
             return findByUserId(userId);
+        }
+
+        @Override
+        public List<Profile> findByUserIds(Collection<String> userIds) {
+            return userIds.stream().map(profiles::get).filter(java.util.Objects::nonNull).toList();
         }
 
         @Override

@@ -10,6 +10,8 @@ import ar.edu.uade.skillswap.infrastructure.persistence.mapper.ProfileMapper;
 
 import jakarta.persistence.LockModeType;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -50,6 +52,22 @@ public final class JpaProfileRepository extends JpaRepositorySupport
                 .getResultStream()
                 .findFirst()
                 .map(ProfileMapper::toDomain));
+    }
+
+    @Override
+    public List<Profile> findByUserIds(Collection<String> userIds) {
+        Objects.requireNonNull(userIds, "Faltan los usuarios");
+        List<String> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return List.of();
+
+        return query(em -> em.createQuery(
+                        "SELECT p FROM ProfileEntity p WHERE p.userId IN :userIds",
+                        ProfileEntity.class)
+                .setParameter("userIds", ids)
+                .getResultList()
+                .stream()
+                .map(ProfileMapper::toDomain)
+                .toList());
     }
 
     @Override
