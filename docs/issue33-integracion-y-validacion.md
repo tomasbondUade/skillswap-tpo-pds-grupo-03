@@ -19,6 +19,8 @@ StarUML y su exportación quedan fuera de este trabajo por solicitud de la respo
 
 La prueba específica de sesión pasó con tres ejecuciones: conserva la identidad inyectada, rechaza identidades inválidas sin cambiar la sesión y completa solicitar → aceptar → pagar → iniciar → completar → calificar desde WiredUiControllers sobre MySQL/JPA. También comprueba permisos de publicaciones, saldos de ambos participantes y reputación persistida.
 
+Suite completa del 05/11/2026: `mvn -Pmysql-it test`, **237 pruebas, 0 fallos, 0 errores y 0 omitidas**, con MySQL 8.4.13. La rama incorpora la corrección `e49094b` de #63 y está libre de conflictos con esa base. La validación visual completa y la cobertura permanecen pendientes.
+
 Las pruebas MySQL usan bases aleatorias aisladas y Flyway V1–V4. Comandos: mvn test y mvn -Pmysql-it test, con las variables documentadas en docs/pruebas-mysql.md. Los resultados históricos de 124 pruebas corresponden al corte anterior del 02/11 y no certifican esta integración.
 
 ## Pendientes de aceptación
