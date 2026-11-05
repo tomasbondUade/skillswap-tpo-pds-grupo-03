@@ -75,7 +75,6 @@ public final class PublicacionUiController implements UiControllers.PublicacionC
     }
 
     private Models.Publicacion toUi(PublicationView view) {
-        // PublicationView supplies an author id; no provider name or reputation is invented here.
-        return mapper.toPublicacion(view, view.authorUserId(), 0);
+        return mapper.toPublicacion(view);
     }
 }

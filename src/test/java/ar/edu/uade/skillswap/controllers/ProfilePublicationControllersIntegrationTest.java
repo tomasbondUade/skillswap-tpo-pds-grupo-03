@@ -20,12 +20,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProfilePublicationControllersIntegrationTest {
     private String actor = "u1";
     private final InMemoryProfileRepository profileRepository = new InMemoryProfileRepository();
-    private final InMemoryPublicationRepository publicationRepository = new InMemoryPublicationRepository();
+    private final InMemoryPublicationRepository publicationRepository = new InMemoryPublicationRepository(profileRepository);
     private final SynchronousTransactionManager transactions = new SynchronousTransactionManager();
     private final PerfilUiController profiles = new PerfilUiController(new ProfileApplicationService(
             profileRepository, () -> actor, transactions), () -> actor, new UiOperationExecutor());
     private final PublicacionUiController publications = new PublicacionUiController(new PublicationApplicationService(
-            publicationRepository, () -> actor, transactions), () -> actor, new UiOperationExecutor());
+            publicationRepository, profileRepository, () -> actor, transactions), () -> actor, new UiOperationExecutor());
 
     @Test
     void creaConsultaYRechazaUnPerfilDuplicado() {
@@ -38,6 +38,7 @@ class ProfilePublicationControllersIntegrationTest {
 
     @Test
     void editaPublicaYPausaDelegandoLasTransicionesAlDominio() {
+        profiles.crearPerfil("u1", profile("Julieta"));
         var draft = publications.crearBorrador("u1", draft());
         var edited = publications.editarBorrador("u1", draft.id(), edition("Java avanzado"));
         assertEquals("Java avanzado", edited.titulo());

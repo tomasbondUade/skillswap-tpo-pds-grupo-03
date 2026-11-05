@@ -3,6 +3,7 @@ package ar.edu.uade.skillswap.infrastructure;
 import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.controllers.ContratacionUiController;
+import ar.edu.uade.skillswap.controllers.BusquedaUiController;
 import ar.edu.uade.skillswap.controllers.PerfilUiController;
 import ar.edu.uade.skillswap.controllers.PublicacionUiController;
 import ar.edu.uade.skillswap.controllers.UiControllers;
@@ -22,6 +23,7 @@ public final class WiredUiControllers implements UiControllers,
 
     private final SkillSwapApplicationWiring wiring;
     private final PerfilUiController profileController;
+    private final BusquedaUiController searchController;
     private final ContratacionUiController bookingController;
     private final PublicacionUiController publicationController;
 
@@ -35,6 +37,7 @@ public final class WiredUiControllers implements UiControllers,
 
     public WiredUiControllers(SkillSwapApplicationWiring wiring) {
         this.wiring = java.util.Objects.requireNonNull(wiring);
+        searchController = new BusquedaUiController(wiring.discoveryService(), wiring.currentUserProvider(), operations);
         profileController = new PerfilUiController(wiring.profileService(), wiring.currentUserProvider(), operations);
         bookingController = new ContratacionUiController(wiring.bookingService(),
                 wiring.currentUserProvider(), operations, this::toContratacion);
@@ -80,19 +83,12 @@ public final class WiredUiControllers implements UiControllers,
 
     @Override
     public List<Models.Publicacion> recomendar(String userId) {
-        return operations.execute(() ->
-                wiring.discoveryService().recommend(3).stream()
-                        .map(this::toPublicacion)
-                        .toList());
+        return searchController.recomendar(userId).stream().map(this::remember).toList();
     }
 
     @Override
     public List<String> categorias() {
-        return operations.execute(() ->
-                java.util.stream.Stream.concat(
-                        java.util.stream.Stream.of("Todas"),
-                        wiring.discoveryService().categories().stream())
-                        .toList());
+        return searchController.categorias();
     }
 
     @Override
@@ -198,9 +194,7 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     private Models.Publicacion toPublicacion(PublicationView view) {
-        var author = wiring.discoveryService().author(view.authorUserId());
-        Models.Publicacion publication = mapper.toPublicacion(
-                view, author.displayName(), author.reputation());
+        Models.Publicacion publication = mapper.toPublicacion(view);
         publicationCache.put(view.id(), publication);
         return publication;
     }
