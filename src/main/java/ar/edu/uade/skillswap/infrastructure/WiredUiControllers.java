@@ -254,8 +254,12 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     private Models.Publicacion toPublicacion(PublicationView view) {
-        Models.Publicacion publication = mapper.toPublicacion(view);
-        publicationCache.put(view.id(), publication);
+        return remember(mapper.toPublicacion(view));
+    }
+
+    /** Keeps the last version shown so a booking can display the publication title. */
+    private Models.Publicacion remember(Models.Publicacion publication) {
+        publicationCache.put(publication.id(), publication);
         return publication;
     }
 

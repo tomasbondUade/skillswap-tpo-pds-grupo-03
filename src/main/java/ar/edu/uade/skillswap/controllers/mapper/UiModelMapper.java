@@ -21,8 +21,14 @@ public final class UiModelMapper {
                 filtros.categoria() != null && !"Todas".equals(filtros.categoria())
                         ? filtros.categoria() : null,
                 filtros.modalidad() == null ? null : toModality(filtros.modalidad()),
-                null, null, filtros.precioMaximo() > 0 ? filtros.precioMaximo() : null,
-                null, toSearchOrder(filtros.orden()), 0, 20);
+                filtros.habilidad(), filtros.precioMinimo(), filtros.precioMaximo(),
+                filtros.reputacionMinima(), toSearchOrder(filtros.orden()),
+                filtros.pagina(), filtros.tamanio());
+    }
+
+    public Models.PaginaPublicaciones toPaginaPublicaciones(PageResult<PublicationView> page) {
+        return new Models.PaginaPublicaciones(page.items().stream().map(this::toPublicacion).toList(),
+                page.page(), page.size(), page.totalElements(), page.totalPages());
     }
 
     public Models.Publicacion toPublicacion(PublicationView view) {

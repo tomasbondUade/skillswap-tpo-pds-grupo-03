@@ -84,3 +84,9 @@ La consigna (§4.3) pide buscar publicaciones por texto, categoría, modalidad, 
 | `PublicationApplicationServiceTest` | Vistas de gestión con autor, borrador sin perfil rechazado, listado vacío sin perfil. |
 | `InMemoryRepositoriesTest` | Lectura de perfiles en lote. |
 | `UiModelMapperTest` / `WiredUiControllersTest` | Conversión de filtros de UI y nombre/reputación reales del autor en las tarjetas. |
+
+## Revisión de integración del 05/11/2026
+
+`main` en `2d6e9fd` ya contiene la búsqueda y los contratos paginados incorporados por #71. La actualización de #70 había restaurado accidentalmente el mapeo anterior: se perdían filtros y paginación, faltaba `toPaginaPublicaciones`, desaparecía el helper de caché `remember` y se eliminaban pruebas de navegación y permisos. Esta revisión conserva exactamente los archivos Java y las pruebas vigentes en `main`; no vuelve a introducir el contrato antiguo ni inventa otra implementación de búsqueda. La funcionalidad de #16 ya está en la base y el cambio restante de este PR es este registro de reconciliación.
+
+Validación local: `mvn -Pmysql-it test`, 208 pruebas, 0 fallos, 0 errores y 0 omitidas, contra MySQL 8.4.13. Se preservan las pruebas de paginación, filtros, permisos y el contrato compartido entre memoria y JPA. `git diff --check` está limpio. Los checks del commit y su aprobación se verifican por separado.
