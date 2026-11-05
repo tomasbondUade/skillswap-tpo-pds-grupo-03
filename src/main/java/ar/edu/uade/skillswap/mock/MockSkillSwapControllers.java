@@ -16,6 +16,10 @@ public final class MockSkillSwapControllers implements UiControllers,
     private final List<Contratacion> contrataciones = new ArrayList<>();
     private final List<Movimiento> movimientos = new ArrayList<>();
     private final List<Notificacion> notificaciones = new ArrayList<>();
+    private final Map<String, Perfil> perfilesCreados = new HashMap<>();
+    private final Map<String, String> autores = new HashMap<>();
+    private final Map<String, String> franjasPropuestas = new HashMap<>();
+    private final Map<String, String> proponentes = new HashMap<>();
     private int saldo = 2480;
 
     public MockSkillSwapControllers() {
@@ -84,11 +88,51 @@ public final class MockSkillSwapControllers implements UiControllers,
 
     @Override public List<Publicacion> recomendar(String userId) { return buscar(new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).items().stream().limit(3).toList(); }
     @Override public List<String> categorias() { return List.of("Todas", "Tecnología", "Diseño", "Creatividad", "Negocios", "Productividad"); }
-    @Override public List<Publicacion> listarPropias(String userId) { return publicaciones.stream().filter(p -> p.proveedor().equals("Mateo Silva")).toList(); }
+    @Override public List<Publicacion> listarPropias(String userId) {
+        return publicaciones.stream().filter(p -> userId.equals(autores.get(p.id()))).toList();
+    }
 
     @Override public Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria, Modalidad modalidad, int duracion, int precio) {
         Publicacion p = new Publicacion(UUID.randomUUID().toString(), titulo, descripcion, categoria, modalidad, duracion, precio, 0, "Mateo Silva", List.of(categoria), EstadoPublicacion.BORRADOR, false);
-        publicaciones.add(p); return p;
+        publicaciones.add(p); autores.put(p.id(), userId); return p;
+    }
+
+    @Override public Publicacion crearBorrador(String userId, DatosBorrador datos) {
+        Objects.requireNonNull(datos, "Faltan los datos del borrador");
+        var slots = datos.disponibilidad().stream().map(slot -> new FranjaDisponibilidad(
+                slot.id() == null ? UUID.randomUUID().toString() : slot.id(),
+                slot.inicio(), slot.fin(), slot.cupos())).toList();
+        var publication = new Publicacion(UUID.randomUUID().toString(), datos.titulo(), datos.descripcion(),
+                datos.categoria(), datos.modalidad(), datos.duracionMinutos(), datos.precio(), 0,
+                userId, datos.etiquetas(), EstadoPublicacion.BORRADOR, false, slots);
+        publicaciones.add(publication);
+        autores.put(publication.id(), userId);
+        return publication;
+    }
+
+    @Override public Publicacion editarBorrador(String userId, String publicacionId, EdicionBorrador datos) {
+        Objects.requireNonNull(datos, "Faltan los datos para editar el borrador");
+        int index = indexOfPublication(publicacionId);
+        Publicacion previous = publicaciones.get(index);
+        if (!userId.equals(autores.get(publicacionId))) throw new SecurityException("No sos el autor");
+        if (previous.estado() != EstadoPublicacion.BORRADOR) throw new IllegalStateException("Solo se editan borradores");
+        var updated = new Publicacion(previous.id(), datos.titulo(), datos.descripcion(), datos.categoria(),
+                datos.modalidad(), datos.duracionMinutos(), previous.precio(), previous.reputacion(),
+                previous.proveedor(), datos.etiquetas(), previous.estado(), previous.destacada(),
+                previous.franjasDisponibles());
+        publicaciones.set(index, updated);
+        return updated;
+    }
+
+    @Override public Perfil crearPerfil(String userId, NuevoPerfil datos) {
+        Objects.requireNonNull(datos, "Faltan los datos del perfil");
+        if (perfilesCreados.containsKey(userId) || "user-mateo".equals(userId)) {
+            throw new IllegalStateException("El perfil ya existe");
+        }
+        var profile = new Perfil(userId, datos.nombre(), "Miembro de SkillSwap", datos.bio(),
+                datos.habilidades(), 0, 0, 0);
+        perfilesCreados.put(userId, profile);
+        return profile;
     }
 
     @Override public Publicacion cambiarEstado(String userId, String id, EstadoPublicacion estado) {
@@ -140,11 +184,100 @@ public final class MockSkillSwapControllers implements UiControllers,
         } throw new IllegalArgumentException("Contratación inexistente");
     }
 
+
+    // Comportamiento de demostración: las reglas reales se ejecutan en Booking/BookingUseCases.
+    @Override public Contratacion aceptar(String userId, String id) {
+        return transition(id, EstadoContratacion.PENDIENTE, EstadoContratacion.ACEPTADA);
+    }
+
+    @Override public Contratacion rechazar(String userId, String id, String motivo) {
+        required(motivo, "Falta el motivo del rechazo");
+        return transition(id, EstadoContratacion.PENDIENTE, EstadoContratacion.RECHAZADA);
+    }
+
+    @Override public Contratacion pagar(String userId, String id) {
+        return transition(id, EstadoContratacion.ACEPTADA, EstadoContratacion.CONFIRMADA);
+    }
+
+    @Override public Contratacion cancelar(String userId, String id, String motivo) {
+        required(motivo, "Falta el motivo de la cancelación");
+        return cancelar(userId, id);
+    }
+
+    @Override public Contratacion proponerReprogramacion(String userId, String id, String nuevaFranjaId) {
+        required(nuevaFranjaId, "Falta la nueva franja");
+        Contratacion actual = findContract(id);
+        if (actual.estado() != EstadoContratacion.ACEPTADA && actual.estado() != EstadoContratacion.CONFIRMADA) {
+            throw new IllegalStateException("Solo se puede reprogramar antes de iniciar");
+        }
+        if (nuevaFranjaId.equals(actual.franjaId())) {
+            throw new IllegalArgumentException("La franja debe ser distinta");
+        }
+        if (franjasPropuestas.containsKey(id)) {
+            throw new IllegalStateException("Ya hay una propuesta pendiente");
+        }
+        franjasPropuestas.put(id, nuevaFranjaId);
+        proponentes.put(id, userId);
+        return actual;
+    }
+
+    @Override public Contratacion aceptarReprogramacion(String userId, String id) {
+        Contratacion actual = findContract(id);
+        String nuevaFranja = franjasPropuestas.get(id);
+        if (nuevaFranja == null) throw new IllegalStateException("No hay una propuesta pendiente");
+        if (Objects.equals(userId, proponentes.get(id))) {
+            throw new SecurityException("La otra parte debe aceptar la propuesta");
+        }
+        Contratacion updated = new Contratacion(actual.id(), actual.titulo(), actual.contraparte(),
+                actual.fecha(), actual.precio(), actual.estado(), actual.objetivo(),
+                actual.mensajeCliente(), nuevaFranja);
+        contrataciones.set(contrataciones.indexOf(actual), updated);
+        franjasPropuestas.remove(id);
+        proponentes.remove(id);
+        return updated;
+    }
+
+    @Override public Contratacion iniciar(String userId, String id) {
+        return transition(id, EstadoContratacion.CONFIRMADA, EstadoContratacion.EN_CURSO);
+    }
+
+    @Override public Contratacion completar(String userId, String id) {
+        return transition(id, EstadoContratacion.EN_CURSO, EstadoContratacion.COMPLETADA);
+    }
+
+    @Override public boolean puedeAvanzar(String userId, String id) {
+        EstadoContratacion estado = findContract(id).estado();
+        return estado != EstadoContratacion.COMPLETADA
+                && estado != EstadoContratacion.RECHAZADA
+                && estado != EstadoContratacion.CANCELADA;
+    }
+
+    private Contratacion transition(String id, EstadoContratacion expected, EstadoContratacion target) {
+        Contratacion actual = findContract(id);
+        if (actual.estado() != expected) throw new IllegalStateException("Transición no permitida");
+        Contratacion updated = new Contratacion(actual.id(), actual.titulo(), actual.contraparte(),
+                actual.fecha(), actual.precio(), target, actual.objetivo(),
+                actual.mensajeCliente(), actual.franjaId());
+        contrataciones.set(contrataciones.indexOf(actual), updated);
+        return updated;
+    }
+
+    private Contratacion findContract(String id) {
+        return contrataciones.stream().filter(c -> c.id().equals(id)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Contratación inexistente"));
+    }
+
+    private static void required(String value, String message) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
+    }
+
     @Override public int consultarSaldo(String userId) { return saldo; }
     @Override public List<Movimiento> listarMovimientos(String userId) { List<Movimiento> copia=new ArrayList<>(movimientos); Collections.reverse(copia); return List.copyOf(copia); }
     @Override public int acreditarDemo(String userId, int importe) { saldo+=importe; movimientos.add(new Movimiento("Créditos promocionales",LocalDateTime.now(),importe,saldo)); return saldo; }
     @Override public List<Notificacion> listarNotificaciones(String userId) { return List.copyOf(notificaciones); }
     @Override public void marcarLeida(String userId, String id) { for(int i=0;i<notificaciones.size();i++){Notificacion n=notificaciones.get(i);if(n.id().equals(id))notificaciones.set(i,new Notificacion(n.id(),n.titulo(),n.detalle(),n.fecha(),true,n.tipo()));} }
     @Override public void marcarTodasLeidas(String userId) { for(Notificacion n:List.copyOf(notificaciones)) marcarLeida(userId,n.id()); }
-    @Override public Perfil verPerfil(String userId) { return new Perfil(userId,"Mateo Silva","Software Engineer & Mentor","Construyo productos digitales y acompaño a personas que quieren crecer en tecnología.",List.of("Java","Clean Architecture","Mentoría","SQL","Diseño OO"),4.9,37,52); }
+    @Override public Perfil verPerfil(String userId) {
+        if (perfilesCreados.containsKey(userId)) return perfilesCreados.get(userId);
+        return new Perfil(userId,"Mateo Silva","Software Engineer & Mentor","Construyo productos digitales y acompaño a personas que quieren crecer en tecnología.",List.of("Java","Clean Architecture","Mentoría","SQL","Diseño OO"),4.9,37,52); }
 }
