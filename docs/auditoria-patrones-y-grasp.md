@@ -1,12 +1,24 @@
 # Trazabilidad para la defensa: patrones, GRASP y arquitectura
 
-Matriz de seguimiento del issue [#35](https://github.com/tomasbondUade/skillswap-tpo-pds-grupo-03/issues/35). Este corte describe `main` en `36b07b0` (26/10/2026), que ya incluye los PRs #48–#52. El modelo editable y el informe de decisiones se entregan en este cambio; todavía no forman parte de `main` hasta que se revise y fusione este PR.
+Matriz de seguimiento del issue [#35](https://github.com/tomasbondUade/skillswap-tpo-pds-grupo-03/issues/35). Revisión del 02/11/2026 sobre `feature/persistence-infrastructure`, partiendo de `d0f036a` (PR #61), que incluye `main` en `9752c91` y la decisión del PR #66. La evidencia de esta rama no implica que #61 esté integrado en `main`. Esta actualización es documental; no crea ni modifica UML.
+
+Las secciones señaladas como **históricas** conservan el inventario de `main` en `36b07b0` (26/10/2026, PR #48–#52) para trazabilidad. Sus pendientes no describen el estado actual. El inventario de patrones y la actualización siguiente distinguen implementación disponible de validación pendiente.
+
+## Actualización del PR #61
+
+- Application dispone de servicios concretos y pruebas bajo `application/service`; `SkillSwapApplicationWiring` los compone en memoria o con JPA mediante `--persistence=jpa`. La unidad JPA, transacciones y cierre de recursos se comparten para todos los repositorios del modo persistente.
+- Infrastructure incorpora entidades, mappers, repositorios JPA, `JpaTransactionManager` y migraciones V1/V2. `JpaBookingClientMessageTest` verifica guardar, buscar y actualizar el mensaje y aplicar V2 a una tabla con filas previas en H2 modo MySQL.
+- Adapter está implementado para identidad y notificaciones; Observer tiene un dispatcher, suscripciones y pruebas de varios observadores. La evidencia concreta se detalla abajo.
+- La verificación posterior contra MySQL real/Flyway, rollback, carreras de reservas/pagos y paginación se registra en [Pruebas de MySQL](pruebas-mysql.md). La demo en memoria y H2 no sustituyen esa suite. La prueba no certifica carga de producción ni todos los intercalados posibles.
+- La suite ampliada también verifica perfiles, calificaciones/reputación, notificaciones, orden por reputación y reinicio del wiring JPA sin perder ni duplicar datos. El arranque de Swing con MySQL se comprobó en modo de captura; no equivale a recorrer manualmente todas las pantallas.
+- Los controllers de #63/#64 y la integración/calificación de #65 están en ramas separadas; este corte no certifica su integración ni el recorrido visual completo. La cobertura Domain/Application todavía requiere medición.
+- Verificación inicial del 02/11/2026: `mvn clean test` sobre `d0f036a`, 117 pruebas, 0 fallos, 0 errores y 0 omitidas. La revisión documental `e634a02` fue seguida por las pruebas reales de MySQL, sus correcciones de Infrastructure y V3; consultar el registro enlazado para la validación posterior.
 
 ## Criterio de auditoría
 
 La consigna pide al menos cuatro patrones justificados y probados; los patrones sugeridos son opciones, no una lista que deba implementarse artificialmente. El inventario permite ver todos los patrones tratados en la cursada y diferencia su evidencia del trabajo pendiente. Los patrones verificados indican implementación y pruebas para el alcance indicado, no que la aplicación completa ya esté integrada.
 
-## Requisitos funcionales, arquitectura y estado
+## Requisitos funcionales, arquitectura y estado (histórico: 26/10)
 
 | Área / issue | Evidencia integrada en `main` | Estado y próximo trabajo |
 | --- | --- | --- |
@@ -26,6 +38,8 @@ La consigna pide al menos cuatro patrones justificados y probados; los patrones 
 
 ## Inventario de patrones
 
+Las filas que dicen «en `main`» conservan evidencia del corte histórico; Adapter, Observer, Simple Factory y Factory Method se actualizan al PR #61. La ausencia histórica de servicios o adapters debe leerse junto con la actualización del PR #61, no como una ausencia en esta rama.
+
 | Patrón | Aplicación evaluada | Evidencia / conclusión |
 | --- | --- | --- |
 | Strategy | Variantes de recomendación y cálculo de reintegro. | **Verificado en `main`:** `RecommendationStrategy` y `RefundPolicy`, con dos variantes cada uno y pruebas de dominio. No hay todavía caso de uso que seleccione/consuma las estrategias. |
@@ -33,10 +47,10 @@ La consigna pide al menos cuatro patrones justificados y probados; los patrones 
 | Builder | Crear publicaciones con datos obligatorios y opcionales. | **Verificado en `main`:** `PublicationBuilder`, `PublicationBuilderTest` y decisión #36; PR #49 está integrado. |
 | Decorator | Componer promociones sobre un precio base. | **Verificado en `main`:** `PriceQuote`, `PriceDecorator`, `FixedAmountPromotion`, `PercentagePromotion` y `PromotionDecoratorTest` (#46). |
 | Singleton | Reusar estados inmutables sin estado por contratación/publicación. | **Uso acotado en `main`:** los enums de `BookingStates` y `PublicationStates` tienen una instancia por estado. La decisión #50 justifica no crear un Singleton mutable ni un Singleton de aplicación. |
-| Adapter | Adaptar una biblioteca/proveedor externo a un puerto interno. | **Pendiente/no aplica aún:** no existe integración incompatible. `NotificationGateway` y `CurrentUserProvider` son puertos; no son adapters. Añadir un adapter cuando haya un proveedor concreto y una traducción real. |
-| Observer | Avisar a varios interesados a partir de un evento de dominio. | **Pendiente:** `DomainEventPublisher` es una abstracción de salida, no hay dispatcher/suscriptores ni pruebas de entrega a más de un observador. |
-| Simple Factory | Seleccionar una implementación de notificación según canal/preferencias. | **Pendiente de caso real:** no existe selección de implementaciones de canal. Evitar una fábrica que solo envuelva un constructor. |
-| Factory Method | Permitir que una variante decida el tipo concreto a crear. | **Evaluación pendiente (#41):** aplicar solo si aparece variación de creación ligada a subtipos; no duplicar Simple Factory para sumar patrones. |
+| Adapter | Adaptar una biblioteca/proveedor externo a un puerto interno. | **Implementado en PR #61 (#25), con proveedores mock:** `IdentityProviderAdapter` traduce `MockIdentityClient.getAuthenticatedIdentity().subject()` a `CurrentUserProvider.currentUserId()`; `EmailNotificationAdapter` y `PushNotificationAdapter` convierten `NotificationMessage` a las llamadas de sus clientes mock. `InAppNotificationAdapter` guarda en el repositorio. Evidencia: `IdentityProviderAdapterTest`, `EmailNotificationAdapterTest`, `PushNotificationAdapterTest` y `NotificationFactoryTest`, bajo `src/test/java/ar/edu/uade/skillswap/infrastructure/`. Los puertos por sí solos no constituyen Adapter; aquí sí hay implementaciones y traducción. No se afirma integración con proveedores reales. |
+| Observer | Avisar a varios interesados a partir de un evento de dominio. | **Implementado en PR #61:** `InMemoryDomainEventPublisher.subscribe/publish` registra y notifica observadores; `SkillSwapApplicationWiring.subscribeNotifications()` suscribe `NotificationEventObserver.onEvent` a eventos de contratación y `RatingNotificationEventPublisher.publish` a `rating.submitted`. `NotificationEventObserverTest` prueba notificación al otro participante, entrega a un segundo observador y continuidad ante el fallo de uno; `RatingNotificationEventPublisherTest` prueba preferencias y canales. Es síncrono y en memoria: no garantiza entrega durable ni atomicidad con JPA. |
+| Simple Factory | Seleccionar una implementación de notificación según canal/preferencias. | **Implementado en PR #61 (#25):** `NotificationFactory.create(channel)` selecciona Email, Push o InApp; `NotificationFactoryTest` cubre cada variante. Decisión detallada en `docs/decision-factory-method-vs-simple-factory.md`. |
+| Factory Method | Permitir que una subclase creadora determine el producto concreto. | **Evaluado y descartado (#41):** no hay variación real por subtipos de creadores; no se duplica la Simple Factory. Justificación en `docs/decision-factory-method-vs-simple-factory.md`. |
 | Abstract Factory | Crear familias relacionadas de objetos de una misma variante de proveedor. | **Evaluación pendiente:** el alcance actual no muestra una familia concreta que la necesite. Documentar el descarte si no surge un proveedor con productos relacionados. |
 | Composite | Tratar categorías o habilidades compuestas y hojas de forma uniforme. | **Pendiente (#37):** no existe jerarquía recursiva en el modelo actual. |
 | Facade | Simplificar una consulta pública que coordina varias fuentes. | **Pendiente (#40):** no hay servicio de consulta integrado. No agregar una fachada sin el flujo que deba simplificar. |
@@ -46,7 +60,7 @@ La consigna pide al menos cuatro patrones justificados y probados; los patrones 
 
 **Conteo de la consigna:** Strategy, State, Builder y Decorator son cuatro patrones GoF distintos con implementación y pruebas en `main`. Singleton se documenta como técnica localizada de los estados inmutables, no como patrón agregado para cumplir un conteo.
 
-## GRASP y SOLID
+## GRASP y SOLID (histórico: 26/10)
 
 | Principio | Evidencia | Estado |
 | --- | --- | --- |
@@ -62,14 +76,14 @@ La consigna pide al menos cuatro patrones justificados y probados; los patrones 
 | ISP | Interfaces de entrada y salida agrupadas por capacidades: perfil, publicación, booking, wallet, rating y notificaciones. | Contratos integrados. |
 | DIP | Application declara puertos; adaptadores concretos deberían depender desde afuera de esos puertos. | Parcial: falta Infrastructure concreta. |
 
-## Arquitectura y límites de las capas
+## Arquitectura y límites de las capas (histórico: 26/10)
 
 - **Presentation:** `ui/SkillSwapView`, `controllers/UiControllers` y la implementación mock. La vista no debe recibir entidades del dominio; los controllers reales convierten entrada/salida y delegan a los puertos de Application.
 - **Application:** los contratos de entrada y salida y modelos de frontera ya están en `application/`. Los services futuros implementan casos de uso y coordinan identidad, repositorios, políticas, transacciones y publicación de eventos. No deben duplicar invariantes de entidades.
 - **Domain:** `domain/model`, `domain/state`, `domain/policy` y `domain/pricing`. Usa Java estándar y no conoce Presentation, JPA, infraestructura ni proveedores.
 - **Infrastructure:** aún no hay implementación. Aquí corresponden mapeos/persistencia JPA, repositorios concretos, migraciones, transacciones y adaptadores de correo/identidad/eventos.
 
-## Próximos pasos para cerrar la integración
+## Próximos pasos registrados en el corte histórico (26/10)
 
 - [ ] Implementar services por área de Application y probarlos con repositorios/puertos simulados.
 - [ ] Crear persistencia MySQL/JPA y migraciones Flyway; probar constraints, consultas y transacciones.

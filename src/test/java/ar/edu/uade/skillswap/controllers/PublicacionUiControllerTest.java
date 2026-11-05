@@ -35,6 +35,8 @@ class PublicacionUiControllerTest {
         assertEquals(1, service.calls);
         assertEquals("p1", result.id());
         assertEquals("Resultado del servicio", result.titulo());
+        assertEquals("Julieta", result.proveedor());
+        assertEquals(4.2, result.reputacion());
         assertEquals(Models.EstadoPublicacion.BORRADOR, result.estado());
         assertEquals(Models.Modalidad.PRESENCIAL, result.modalidad());
         assertEquals(2, result.franjasDisponibles().get(0).cuposDisponibles());
@@ -154,7 +156,8 @@ class PublicacionUiControllerTest {
             if (failure != null) throw failure;
             return new PublicationView("p1", "u1", "Resultado del servicio", "Descripción", "Tecnología",
                     Modality.IN_PERSON, 60, 3, 120, Set.of("Java"), PublicationStatus.DRAFT,
-                    List.of(new AvailabilityView("slot", start, start.plusHours(1), 3, 1)), start, 0);
+                    List.of(new AvailabilityView("slot", start, start.plusHours(1), 3, 1)), start, 0,
+                    new AuthorView("u1", "Julieta", 4.2, 5));
         }
     }
 }

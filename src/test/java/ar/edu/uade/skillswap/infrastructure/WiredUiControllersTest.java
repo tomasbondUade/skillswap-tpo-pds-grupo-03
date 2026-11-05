@@ -5,6 +5,8 @@ import ar.edu.uade.skillswap.model.Models.Modalidad;
 import ar.edu.uade.skillswap.model.Models.EstadoContratacion;
 import ar.edu.uade.skillswap.model.Models;
 import ar.edu.uade.skillswap.controllers.error.PresentationException;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -68,7 +70,7 @@ class WiredUiControllersTest {
     void presentaErroresDePermisosSinCambiarLaContratacion() {
         var controllers = new WiredUiControllers();
         var publication = controllers.busqueda().buscar(
-                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream()
+                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).items().stream()
                 .filter(item -> !"Mateo Silva".equals(item.proveedor())).findFirst().orElseThrow();
         var booking = controllers.contrataciones().solicitar("user-mateo", publication.id(),
                 "Hola", "Aprender", publication.franjasDisponibles().get(0).id());
@@ -99,7 +101,7 @@ class WiredUiControllersTest {
         var controllers = new WiredUiControllers();
 
         var resultados = controllers.busqueda().buscar(
-                new FiltrosBusqueda("Java", "Todas", Modalidad.REMOTA, 0, "Relevancia"));
+                new FiltrosBusqueda("Java", "Todas", Modalidad.REMOTA, 0, "Relevancia")).items();
 
         assertFalse(resultados.isEmpty());
         assertTrue(resultados.stream().anyMatch(p -> p.titulo().toLowerCase().contains("java")));
@@ -108,11 +110,93 @@ class WiredUiControllersTest {
         assertFalse(perfil.habilidades().isEmpty());
     }
 
+    @Test
+    void laBusquedaMuestraElNombreYLaReputacionRealesDelAutor() {
+        var controllers = new WiredUiControllers();
+
+        var resultados = controllers.busqueda().buscar(
+                new FiltrosBusqueda("entrevistas", "Todas", null, 0, "Relevancia")).items();
+
+        assertEquals(1, resultados.size());
+        assertEquals("Ana García", resultados.get(0).proveedor());
+        assertEquals(0.0, resultados.get(0).reputacion());
+    }
+
+    @Test
+    void laBusquedaDevuelvePaginasConElTotalYNavegacion() {
+        var controllers = new WiredUiControllers();
+
+        var first = controllers.busqueda().buscar(new FiltrosBusqueda("", "Todas", null, null, null, null,
+                null, "Menor precio", 0, 2));
+        var second = controllers.busqueda().buscar(new FiltrosBusqueda("", "Todas", null, null, null, null,
+                null, "Menor precio", 1, 2));
+
+        assertEquals(3, first.total());
+        assertEquals(2, first.totalPaginas());
+        assertEquals(List.of(150, 180), first.items().stream().map(Models.Publicacion::precio).toList());
+        assertFalse(first.hayAnterior());
+        assertTrue(first.haySiguiente());
+        assertEquals(List.of(220), second.items().stream().map(Models.Publicacion::precio).toList());
+        assertTrue(second.hayAnterior());
+        assertFalse(second.haySiguiente());
+    }
+
+    @Test
+    void laBusquedaAplicaLosFiltrosNuevos() {
+        var controllers = new WiredUiControllers();
+
+        var bySkill = controllers.busqueda().buscar(new FiltrosBusqueda("", "Todas", null, "backend", null, null,
+                null, null, 0, 20));
+        var byModality = controllers.busqueda().buscar(new FiltrosBusqueda("", "Todas", Modalidad.PRESENCIAL,
+                null, null, null, null, null, 0, 20));
+        var byPrice = controllers.busqueda().buscar(new FiltrosBusqueda("", "Todas", null, null, 160, 200,
+                null, null, 0, 20));
+        var byReputation = controllers.busqueda().buscar(new FiltrosBusqueda("", "Todas", null, null, null, null,
+                1.0, null, 0, 20));
+
+        assertEquals(List.of("Ana García"), bySkill.items().stream().map(Models.Publicacion::proveedor).toList());
+        assertEquals(List.of("Lucía Pérez"), byModality.items().stream().map(Models.Publicacion::proveedor).toList());
+        assertEquals(List.of(180), byPrice.items().stream().map(Models.Publicacion::precio).toList());
+        assertEquals(0, byReputation.total());
+    }
+
+    @Test
+    void losFiltrosInvalidosSeInformanComoValidacion() {
+        var controllers = new WiredUiControllers();
+
+        var error = assertThrows(PresentationException.class, () -> controllers.busqueda().buscar(
+                new FiltrosBusqueda("", "Todas", null, null, 300, 100, null, null, 0, 20)));
+
+        assertEquals(Models.CodigoError.VALIDACION, error.error().codigo());
+    }
+
+    @Test
+    void noRecomiendaParaOtroUsuario() {
+        var controllers = new WiredUiControllers();
+
+        var error = assertThrows(PresentationException.class,
+                () -> controllers.busqueda().recomendar("mentor-ana"));
+
+        assertEquals(Models.CodigoError.PERMISOS, error.error().codigo());
+    }
+
+    @Test
+    void lasRecomendacionesMuestranElNombreYLaReputacionRealesDelAutor() {
+        var controllers = new WiredUiControllers();
+
+        var recomendaciones = controllers.busqueda().recomendar("user-mateo");
+
+        assertFalse(recomendaciones.isEmpty());
+        assertTrue(recomendaciones.stream().allMatch(p ->
+                Set.of("Mateo Silva", "Ana García", "Lucía Pérez").contains(p.proveedor())));
+        assertTrue(recomendaciones.stream().allMatch(p -> p.reputacion() == 0.0));
+    }
+
         @Test
         void conectaContratacionesWalletYNotificacionesConAplicacion() {
         var controllers = new WiredUiControllers();
         var publication = controllers.busqueda().buscar(
-                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).stream()
+                new FiltrosBusqueda("", "Todas", null, 0, "Relevancia")).items().stream()
             .filter(item -> !"Mateo Silva".equals(item.proveedor()))
             .findFirst()
             .orElseThrow();
@@ -147,7 +231,7 @@ class WiredUiControllersTest {
 
         assertEquals(Models.EstadoPublicacion.PUBLICADA, published.estado());
         assertTrue(controllers.busqueda().buscar(
-                new FiltrosBusqueda("Mentoría de integración", "Todas", null, 0, "Relevancia"))
+                new FiltrosBusqueda("Mentoría de integración", "Todas", null, 0, "Relevancia")).items()
             .stream().anyMatch(item -> item.id().equals(draft.id())));
         }
 }

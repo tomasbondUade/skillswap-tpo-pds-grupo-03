@@ -34,7 +34,7 @@ La demo integra los servicios y reglas disponibles, pero todavía no es una entr
 - El formulario de solicitud permite elegir horario e ingresar objetivo y mensaje. Verificar esos datos al recorrer la contratación.
 - El pago debita SkillCoins y los mueve a una wallet de custodia; la finalización libera el saldo al proveedor y la cancelación pagada aplica `StandardRefundPolicy`, devuelve la parte correspondiente al cliente y liquida el remanente al proveedor. Son saldos ficticios y no existe pasarela de pago.
 - El selector solo admite las tres identidades de demo (`user-mateo`, `mentor-ana`, `mentor-lu`); no es un sistema de autenticación.
-- `SynchronousTransactionManager` no aporta rollback ni bloqueo; el estado se pierde al reiniciar.
+- En memoria, `SynchronousTransactionManager` no aporta rollback ni bloqueo y el estado se pierde al reiniciar. El modo `--persistence=jpa` usa MySQL y `JpaTransactionManager`, con la configuración del README.
 - El botón de calificación está disponible en contrataciones completadas; el recorrido visual completo y la actualización de reputación todavía requieren comprobación manual.
 
-La integración con el PR #61 y la validación de persistencia JPA/MySQL, migraciones y garantías de rollback/concurrencia siguen pendientes. Los eventos Observer y la bandeja in-app están integrados en memoria; no hay proveedor externo real. Consultar `issue33-integracion-y-validacion.md` para el estado de pruebas y cobertura.
+La persistencia de #61 ya está integrada en la base y se conserva en esta rama junto con la búsqueda paginada de #71. Los proveedores de email/push siguen siendo mock. Consultar `issue33-integracion-y-validacion.md` para las pruebas de integración, la validación visual y la cobertura, que se reportan por separado.

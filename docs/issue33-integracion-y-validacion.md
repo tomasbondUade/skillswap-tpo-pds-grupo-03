@@ -1,38 +1,36 @@
 # Issue #33 — integración y entrega (sin UML)
 
-## Objetivo
-Componer los controllers, los casos de uso y los adapters; completar el recorrido de contratación en Swing y documentar las decisiones. El modelo StarUML y su exportación PDF quedan expresamente fuera de este trabajo, por solicitud de la responsable.
+## Objetivo y base
 
-## Cambios realizados en la rama
-- CalificacionUiController: DTO simple, identidad activa, validación y delegación a RatingUseCases.
-- Sesión demo: DemoCurrentUserProvider permite alternar entre user-mateo, mentor-ana y mentor-lu para representar comprador/proveedor sin simular autenticación real.
-- WiredUiControllers incorpora calificaciones y selección de identidad; MockSkillSwapControllers mantiene el contrato.
-- Swing agrega selección de usuario demo y un diálogo para calificar contrataciones completadas.
+Conectar controllers, casos de uso y adapters y completar contratación/calificación. La revisión del 05/11/2026 actualiza la base de #63 con main en 2d6e9fd, persistencia #61 y búsqueda paginada #71. #62 ya está integrado. Este PR conserva su base en #63 y permanece en Draft.
 
-## Validación
-Después de actualizar esta rama sobre el PR #64 se ejecutó `mvn clean test` sobre el head `23416c3`: 124 pruebas, 0 fallos y 0 errores. La vista ahora refresca la identidad activa y el saldo del encabezado cuando cambia el usuario o se vuelve a renderizar una pantalla. La prueba manual del recorrido Swing y la medición de cobertura siguen pendientes.
+StarUML y su exportación quedan fuera de este trabajo por solicitud de la responsable. No se generan ni editan diagramas en esta revisión.
 
-Reverificación local del 02/11/2026 sobre `bb6a7a0`: `mvn clean test`, 124 pruebas, 0 fallos, 0 errores y 0 omitidas. Los cambios de esta revisión son documentales (README, guion y estado de integración); no modifican Java ni certifican el recorrido visual. GitHub no reportaba checks para ese head de #65; no confundir la suite local con los checks requeridos contra `main`.
+## Integración corregida
 
-La rama depende de #64 y #63; #62 ya está integrado en `main`. El PR #61, que incorpora Adapter, Simple Factory y JPA, todavía no está fusionado; hay que integrar y resolver incompatibilidades antes de certificar la aceptación. Los checks contra `main` deben ejecutarse después de actualizar la base, una vez integrados #63 y #64. No afirmar que MySQL, rollback, concurrencia o el recorrido visual estén verificados. El PR permanece en Draft.
+- Se conservan PaginaPublicaciones, filtros, paginación y los datos reales del autor de Application.
+- Perfil, publicaciones, búsqueda, contrataciones y calificaciones delegan en sus controllers dedicados; la fachada no duplica reglas ni transiciones.
+- DemoCurrentUserProvider conserva la identidad inyectada hasta que se elige otro usuario de demo. Envuelve el adapter existente tanto en memoria como en JPA, evitando sustituirlo por una identidad fija o hacer un cast incompatible con JPA.
+- El selector admite Mateo, Ana y Lucía. Cambiar identidad refresca saludo, pie lateral, saldo y pantalla; los permisos continúan en Application/Domain.
+- Se conserva el modo --persistence=jpa y el cierre de la fábrica JPA.
+- Los fixtures usan PublicationView.author y ProfileRepository del contrato actual, con el perfil requerido y sin reputaciones inventadas.
 
-## Matriz de aceptación
+## Validación de la revisión
+
+La prueba específica de sesión pasó con tres ejecuciones: conserva la identidad inyectada, rechaza identidades inválidas sin cambiar la sesión y completa solicitar → aceptar → pagar → iniciar → completar → calificar desde WiredUiControllers sobre MySQL/JPA. También comprueba permisos de publicaciones, saldos de ambos participantes y reputación persistida.
+
+Las pruebas MySQL usan bases aleatorias aisladas y Flyway V1–V4. Comandos: mvn test y mvn -Pmysql-it test, con las variables documentadas en docs/pruebas-mysql.md. Los resultados históricos de 124 pruebas corresponden al corte anterior del 02/11 y no certifican esta integración.
+
+## Pendientes de aceptación
+
 | Criterio | Estado |
 | --- | --- |
-| Composición y proveedores mock | Parcial: composición en memoria y demo; integración con PR #61 pendiente |
-| Publicar → solicitar → aceptar → pagar → completar → calificar en Swing | Código de calificación/roles agregado; ejecución end-to-end pendiente |
-| Pruebas de integración y persistencia | Pendiente |
-| README reproducible | Pendiente de validar instalación y comandos |
-| Informe de decisiones PDF | Archivo generado fuera del repositorio para revisión |
-| Modelo StarUML .mdj y PDF | Excluido por solicitud; pendiente de entrega por separado |
-| Cobertura 80% Domain/Application | Sin medición; pendiente |
+| Composición memoria/JPA, mocks y selector | Integrados; prueba específica verificada |
+| Recorrido mediante controllers/casos de uso sobre JPA | Verificado automáticamente; no equivale a interacción visual |
+| Recorrido visual completo en Swing | Pendiente de ejecución y registro manual |
+| Migraciones, rollback, concurrencia y consultas | Cubiertos por la suite de integración; no certifican carga de producción |
+| Informe de decisiones final | Pendiente de completar y entregar |
+| Cobertura 80% Domain/Application | Pendiente de medición |
+| StarUML y PDF | Excluidos de este trabajo; entrega por separado |
 
-## Comandos sugeridos para validación
-```bash
-mvn clean test
-mvn exec:java
-```
-En el perfil de persistencia, configurar MySQL y Flyway antes de iniciar, comprobar migraciones y Hibernate validate; no asumir que la demo en memoria prueba persistencia.
-
-## Notas para defensa
-Los controllers sólo adaptan entrada/salida. Application coordina transacciones y puertos. Domain protege reglas de participantes, estados, cupos y calificaciones. Infrastructure encapsula persistencia, identidad y notificaciones.
+Los checks remotos contra main y la aprobación se requieren al actualizar la base después de integrar #63. La prueba local no reemplaza esos controles. Este PR no se presenta como aceptación completa ni se fusiona en esta revisión.

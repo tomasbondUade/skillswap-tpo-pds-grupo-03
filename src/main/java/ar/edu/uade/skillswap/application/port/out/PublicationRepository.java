@@ -12,6 +12,13 @@ public interface PublicationRepository {
     Optional<Publication> findByIdForUpdate(String publicationId);
     List<Publication> findByAuthorUserId(String authorUserId);
     List<Publication> findPublished();
+
+    /**
+     * Búsqueda paginada del catálogo público (#16): solo publicaciones PUBLISHED de autores activos,
+     * con los filtros, órdenes y paginación descriptos en {@code docs/decision-busqueda.md}.
+     * Toda implementación debe pasar {@code PublicationSearchContract}.
+     */
     PageResult<Publication> searchPublished(SearchQuery query);
+
     Publication save(Publication publication);
 }

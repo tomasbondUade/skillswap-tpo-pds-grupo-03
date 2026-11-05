@@ -10,7 +10,7 @@ import java.util.List;
  */
 public interface UiControllers {
     interface BusquedaController {
-        List<Publicacion> buscar(FiltrosBusqueda filtros);
+        PaginaPublicaciones buscar(FiltrosBusqueda filtros);
         List<Publicacion> recomendar(String userId);
         List<String> categorias();
     }

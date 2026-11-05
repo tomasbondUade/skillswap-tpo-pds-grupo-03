@@ -2,11 +2,12 @@ package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.application.model.BookingData.BookingView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
-import ar.edu.uade.skillswap.controllers.UiControllers;
 import ar.edu.uade.skillswap.controllers.ContratacionUiController;
 import ar.edu.uade.skillswap.controllers.CalificacionUiController;
+import ar.edu.uade.skillswap.controllers.BusquedaUiController;
 import ar.edu.uade.skillswap.controllers.PerfilUiController;
 import ar.edu.uade.skillswap.controllers.PublicacionUiController;
+import ar.edu.uade.skillswap.controllers.UiControllers;
 import ar.edu.uade.skillswap.controllers.mapper.UiModelMapper;
 import ar.edu.uade.skillswap.model.Models;
 
@@ -25,8 +26,10 @@ public final class WiredUiControllers implements UiControllers,
     private final SkillSwapApplicationWiring wiring;
     private final PerfilUiController profileController;
     private final CalificacionUiController ratingController;
+    private final BusquedaUiController searchController;
     private final ContratacionUiController bookingController;
     private final PublicacionUiController publicationController;
+
     private final UiModelMapper mapper = new UiModelMapper();
     private final UiOperationExecutor operations = new UiOperationExecutor();
     private final Map<String, Models.Publicacion> publicationCache = new HashMap<>();
@@ -37,6 +40,7 @@ public final class WiredUiControllers implements UiControllers,
 
     public WiredUiControllers(SkillSwapApplicationWiring wiring) {
         this.wiring = java.util.Objects.requireNonNull(wiring);
+        searchController = new BusquedaUiController(wiring.discoveryService(), wiring.currentUserProvider(), operations);
         profileController = new PerfilUiController(wiring.profileService(), wiring.currentUserProvider(), operations);
         ratingController = new CalificacionUiController(wiring.ratingService(), wiring.currentUserProvider(), operations);
         bookingController = new ContratacionUiController(wiring.bookingService(),
@@ -59,18 +63,14 @@ public final class WiredUiControllers implements UiControllers,
         return bookingController;
     }
 
-    @Override
-    public CalificacionController calificaciones() { return ratingController; }
-
-    @Override
-    public SesionDemoController sesionDemo() { return this; }
-
-    @Override
-    public String usuarioActual() { return wiring.currentUserProvider().currentUserId(); }
-
-    @Override
-    public void cambiarUsuario(String userId) {
-        ((DemoCurrentUserProvider) wiring.currentUserProvider()).switchTo(userId);
+    @Override public CalificacionController calificaciones() { return ratingController; }
+    @Override public SesionDemoController sesionDemo() { return this; }
+    @Override public String usuarioActual() { return wiring.currentUserProvider().currentUserId(); }
+    @Override public void cambiarUsuario(String userId) {
+        operations.execute(() -> {
+            ((DemoCurrentUserProvider) wiring.currentUserProvider()).switchTo(userId);
+            publicationCache.clear();
+        });
     }
 
     @Override
@@ -89,65 +89,71 @@ public final class WiredUiControllers implements UiControllers,
     }
 
     @Override
-    public List<Models.Publicacion> buscar(Models.FiltrosBusqueda filtros) {
-        return operations.execute(() -> {
-            var query = mapper.toSearchQuery(filtros);
-
-            return wiring.discoveryService().search(query).items().stream()
-                    .map(this::toPublicacion)
-                    .toList();
-        });
+    public Models.PaginaPublicaciones buscar(Models.FiltrosBusqueda filtros) {
+        Models.PaginaPublicaciones page = searchController.buscar(filtros);
+        page.items().forEach(this::remember);
+        return page;
     }
 
     @Override
     public List<Models.Publicacion> recomendar(String userId) {
-        return operations.execute(() -> {
-            return wiring.discoveryService().recommend(3).stream()
-                    .map(this::toPublicacion)
-                    .toList();
-        });
+        return searchController.recomendar(userId).stream().map(this::remember).toList();
     }
 
     @Override
     public List<String> categorias() {
-        return operations.execute(() -> {
-            return java.util.stream.Stream.concat(
-                java.util.stream.Stream.of("Todas"),
-                wiring.discoveryService().categories().stream())
-                .toList();
-        });
+        return searchController.categorias();
     }
 
     @Override
     public List<Models.Publicacion> listarPropias(String userId) {
-        return publicationController.listarPropias(userId).stream().map(this::remember).toList();
+        return publicationController.listarPropias(userId).stream()
+                .map(this::remember)
+                .toList();
     }
 
     @Override
-    public Models.Publicacion crearBorrador(String userId, String titulo, String descripcion,
-                                           String categoria, Models.Modalidad modalidad,
-                                           int duracion, int precio) {
-        return remember(publicationController.crearBorrador(userId, titulo, descripcion,
-                categoria, modalidad, duracion, precio));
+    public Models.Publicacion crearBorrador(
+            String userId,
+            String titulo,
+            String descripcion,
+            String categoria,
+            Models.Modalidad modalidad,
+            int duracion,
+            int precio) {
+        return remember(publicationController.crearBorrador(
+                userId, titulo, descripcion, categoria, modalidad, duracion, precio));
     }
 
     @Override
-    public Models.Publicacion crearBorrador(String userId, Models.DatosBorrador datos) {
+    public Models.Publicacion crearBorrador(
+            String userId,
+            Models.DatosBorrador datos) {
         return remember(publicationController.crearBorrador(userId, datos));
     }
 
     @Override
-    public Models.Publicacion editarBorrador(String userId, String publicacionId, Models.EdicionBorrador datos) {
-        return remember(publicationController.editarBorrador(userId, publicacionId, datos));
+    public Models.Publicacion editarBorrador(
+            String userId,
+            String publicacionId,
+            Models.EdicionBorrador datos) {
+        return remember(publicationController.editarBorrador(
+                userId, publicacionId, datos));
     }
 
     @Override
-    public Models.Publicacion cambiarEstado(String userId, String publicacionId, Models.EstadoPublicacion estado) {
-        return remember(publicationController.cambiarEstado(userId, publicacionId, estado));
+    public Models.Publicacion cambiarEstado(
+            String userId,
+            String publicacionId,
+            Models.EstadoPublicacion estado) {
+        return remember(publicationController.cambiarEstado(
+                userId, publicacionId, estado));
     }
 
     @Override
-    public Models.Perfil crearPerfil(String userId, Models.NuevoPerfil datos) {
+    public Models.Perfil crearPerfil(
+            String userId,
+            Models.NuevoPerfil datos) {
         return profileController.crearPerfil(userId, datos);
     }
 
@@ -163,75 +169,63 @@ public final class WiredUiControllers implements UiControllers,
 
     @Override
     public int consultarSaldo(String userId) {
-        return operations.execute(() -> {
-            return wiring.walletService().viewMyWallet().balanceInSkillCoins();
-        });
+        return operations.execute(() ->
+                wiring.walletService().viewMyWallet().balanceInSkillCoins());
     }
 
     @Override
     public List<Models.Movimiento> listarMovimientos(String userId) {
-        return operations.execute(() -> {
-            return wiring.walletService().viewMyWallet().movements().stream()
-                .map(mapper::toMovimiento)
-                .toList();
-        });
+        return operations.execute(() ->
+                wiring.walletService().viewMyWallet().movements().stream()
+                        .map(mapper::toMovimiento)
+                        .toList());
     }
 
     @Override
     public int acreditarDemo(String userId, int importe) {
-        return operations.execute(() -> {
-            return wiring.walletService().creditDemo(importe).balanceInSkillCoins();
-        });
+        return operations.execute(() ->
+                wiring.walletService().creditDemo(importe).balanceInSkillCoins());
     }
 
     @Override
     public List<Models.Notificacion> listarNotificaciones(String userId) {
-        return operations.execute(() -> {
-            return wiring.notificationService().listMine().stream()
-                .map(mapper::toNotificacion)
-                .toList();
-        });
+        return operations.execute(() ->
+                wiring.notificationService().listMine().stream()
+                        .map(mapper::toNotificacion)
+                        .toList());
     }
 
     @Override
     public void marcarLeida(String userId, String notificacionId) {
-        operations.execute(() -> {
-            wiring.notificationService().markRead(notificacionId);
-        });
+        operations.execute(() ->
+                wiring.notificationService().markRead(notificacionId));
     }
 
     @Override
     public void marcarTodasLeidas(String userId) {
-        operations.execute(() -> {
-            wiring.notificationService().markAllRead();
-        });
+        operations.execute(() ->
+                wiring.notificationService().markAllRead());
     }
 
     private Models.Publicacion toPublicacion(PublicationView view) {
-        Models.Publicacion publication = mapper.toPublicacion(view,
-                providerName(view.authorUserId()), reputationFor(view));
+        Models.Publicacion publication = mapper.toPublicacion(view);
         publicationCache.put(view.id(), publication);
         return publication;
     }
 
     private Models.Contratacion toContratacion(BookingView booking) {
-        Models.Publicacion publication = publicationCache.get(booking.publicationId());
-        String title = publication == null ? booking.publicationId() : publication.titulo();
+        Models.Publicacion publication =
+                publicationCache.get(booking.publicationId());
+        String title = publication == null
+                ? booking.publicationId()
+                : publication.titulo();
         String counterpart = "user-mateo".equals(booking.buyerUserId())
                 ? providerName(booking.providerUserId())
                 : "Mateo Silva";
         return mapper.toContratacion(booking, title, counterpart);
     }
 
-    private static double reputationFor(PublicationView view) {
-        if ("user-mateo".equals(view.authorUserId())) {
-            return 4.9;
-        }
-        return 4.8 + ((view.requestCount() % 3) * 0.1);
+    private String providerName(String authorUserId) {
+        return wiring.discoveryService().author(authorUserId).displayName();
     }
-
-    private static String providerName(String authorUserId) {
-        return "user-mateo".equals(authorUserId) ? "Mateo Silva" : "Mentor SkillSwap";
-    }
-
 }
