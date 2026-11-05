@@ -11,8 +11,11 @@ import ar.edu.uade.skillswap.application.model.ProfileData.RegisterCommand;
 import ar.edu.uade.skillswap.application.model.ProfileData.UpdateCommand;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.domain.model.Profile;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -25,7 +28,7 @@ class ProfileApplicationServiceTest {
         var service = new ProfileApplicationService(profiles, () -> "  user-1  ", transactions);
 
         var result = service.register(new RegisterCommand("Ana", "Bio", "America/Argentina/Buenos_Aires",
-                java.util.List.of("Java"), java.util.List.of("Mentoría"), Set.of(), java.util.List.of()));
+                List.of("Java"), List.of("Mentoría"), Set.of(), List.of()));
 
         assertEquals("user-1", result.userId());
         assertEquals("Ana", result.displayName());
@@ -41,7 +44,7 @@ class ProfileApplicationServiceTest {
         var service = new ProfileApplicationService(profiles, () -> "user-1", new ImmediateTransactionManager());
 
         var duplicate = assertThrows(ApplicationException.class, () -> service.register(
-                new RegisterCommand("Ana", "", "UTC", java.util.List.of(), java.util.List.of(), Set.of(), java.util.List.of())));
+                new RegisterCommand("Ana", "", "UTC", List.of(), List.of(), Set.of(), List.of())));
         assertEquals(ApplicationErrorCode.CONFLICT, duplicate.code());
 
         var unauthenticated = new ProfileApplicationService(profiles, () -> " ", new ImmediateTransactionManager());
@@ -56,7 +59,7 @@ class ProfileApplicationServiceTest {
         var service = new ProfileApplicationService(profiles, () -> "user-1", new ImmediateTransactionManager());
 
         var updated = service.update(new UpdateCommand("Ana B.", "Nueva bio", "UTC-3",
-                java.util.List.of("Java", "SQL"), java.util.List.of("Docencia")));
+                List.of("Java", "SQL"), List.of("Docencia")));
         assertEquals("Ana B.", updated.displayName());
         assertEquals("UTC-3", updated.timeZone());
         assertEquals(Set.of("Java", "SQL"), Set.copyOf(updated.skills()));
@@ -64,7 +67,7 @@ class ProfileApplicationServiceTest {
         service.deactivateMyProfile();
         assertFalse(service.viewMyProfile().active());
         var error = assertThrows(ApplicationException.class, () -> service.update(
-                new UpdateCommand("Ana", "", "UTC", java.util.List.of(), java.util.List.of())));
+                new UpdateCommand("Ana", "", "UTC", List.of(), List.of())));
         assertEquals(ApplicationErrorCode.INVALID_STATE, error.code());
 
         service.activateMyProfile();
@@ -76,6 +79,9 @@ class ProfileApplicationServiceTest {
 
         @Override public Optional<Profile> findByUserId(String userId) { return Optional.ofNullable(byUser.get(userId)); }
         @Override public Optional<Profile> findByUserIdForUpdate(String userId) { return findByUserId(userId); }
+        @Override public List<Profile> findByUserIds(Collection<String> userIds) {
+            return userIds.stream().map(byUser::get).filter(Objects::nonNull).toList();
+        }
         @Override public Profile save(Profile profile) { byUser.put(profile.userId(), profile); return profile; }
     }
 }

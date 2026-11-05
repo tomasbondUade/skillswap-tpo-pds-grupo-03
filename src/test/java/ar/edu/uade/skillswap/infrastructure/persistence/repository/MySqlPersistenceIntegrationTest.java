@@ -129,14 +129,14 @@ class MySqlPersistenceIntegrationTest {
             return high.id();
         });
         var first = publications.searchPublished(new SearchQuery("", "Tecnología", null,
-                null, null, null, SearchOrder.BEST_RATING, 0, 1));
+                null, null, null, null, SearchOrder.BEST_RATING, 0, 1));
         var second = publications.searchPublished(new SearchQuery("", "Tecnología", null,
-                null, null, null, SearchOrder.BEST_RATING, 1, 1));
+                null, null, null, null, SearchOrder.BEST_RATING, 1, 1));
         assertEquals(2, first.totalElements());
         assertEquals(highId, first.items().get(0).id());
         assertNotEquals(highId, second.items().get(0).id());
         var filtered = publications.searchPublished(new SearchQuery("", null, null,
-                null, null, 4.0, SearchOrder.BEST_RATING, 0, 10));
+                null, null, null, 4.0, SearchOrder.BEST_RATING, 0, 10));
         assertEquals(1, filtered.totalElements());
         assertEquals(highId, filtered.items().get(0).id());
     }
@@ -527,7 +527,7 @@ class MySqlPersistenceIntegrationTest {
     }
 
     private SearchQuery search(int page, int minimum, int maximum) {
-        return new SearchQuery("Java", "Paginación", Modality.REMOTE, minimum, maximum,
+        return new SearchQuery("Java", "Paginación", Modality.REMOTE, null, minimum, maximum,
                 0.0, SearchOrder.LOWEST_PRICE, page, 2);
     }
 

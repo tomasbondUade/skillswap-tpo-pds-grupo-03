@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -114,16 +115,11 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
                     cb.createQuery(PublicationEntity.class);
             Root<PublicationEntity> publication =
                     resultQuery.from(PublicationEntity.class);
-
-            List<Predicate> predicates = new ArrayList<>(java.util.Arrays.asList(
-                    buildPredicates(cb, resultQuery, publication, search)));
-            Root<ProfileEntity> author = null;
-            if (search.order() == SearchOrder.BEST_RATING) {
-                author = resultQuery.from(ProfileEntity.class);
-                predicates.add(cb.equal(author.get("userId"), publication.get("authorUserId")));
-            }
+            Root<ProfileEntity> author = resultQuery.from(ProfileEntity.class);
+            Predicate[] predicates = buildPredicates(
+                    cb, resultQuery, publication, author, search);
             resultQuery.select(publication)
-                    .where(predicates.toArray(Predicate[]::new))
+                    .where(predicates)
                     .orderBy(orderBy(cb, publication, author, search.order()));
 
             int firstResult = Math.multiplyExact(
@@ -140,10 +136,11 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
             CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
             Root<PublicationEntity> countRoot =
                     countQuery.from(PublicationEntity.class);
+            Root<ProfileEntity> countAuthor = countQuery.from(ProfileEntity.class);
 
-            countQuery.select(cb.count(countRoot))
+            countQuery.select(cb.countDistinct(countRoot))
                     .where(buildPredicates(
-                            cb, countQuery, countRoot, search));
+                            cb, countQuery, countRoot, countAuthor, search));
 
             long total = em.createQuery(countQuery).getSingleResult();
 
@@ -156,31 +153,35 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
             CriteriaBuilder cb,
             CriteriaQuery<?> criteria,
             Root<PublicationEntity> publication,
+            Root<ProfileEntity> author,
             SearchQuery search) {
 
         List<Predicate> predicates = new ArrayList<>();
 
         predicates.add(cb.equal(publication.get("status"), "PUBLISHED"));
+        predicates.add(cb.equal(author.get("userId"), publication.get("authorUserId")));
+        predicates.add(cb.isTrue(author.get("active")));
 
         if (!search.text().isBlank()) {
-            String pattern = "%"
-                    + search.text().toLowerCase()
-                    + "%";
+            String pattern = containsPattern(search.text());
+            var tagMatches = criteria.subquery(Integer.class);
+            Root<PublicationTagEntity> tag = tagMatches.from(PublicationTagEntity.class);
+            tagMatches.select(cb.literal(1)).where(
+                    cb.equal(tag.get("publication").get("id"), publication.get("id")),
+                    cb.like(cb.lower(tag.get("id").get("tag")), pattern, '\\'));
 
             predicates.add(cb.or(
-                    cb.like(
-                            cb.lower(publication.get("title")), pattern),
-                    cb.like(
-                            cb.lower(publication.get("description")), pattern),
-                    cb.like(
-                            cb.lower(publication.get("category")), pattern)
+                    cb.like(cb.lower(publication.get("title")), pattern, '\\'),
+                    cb.like(cb.lower(publication.get("description")), pattern, '\\'),
+                    cb.like(cb.lower(publication.get("category")), pattern, '\\'),
+                    cb.exists(tagMatches)
             ));
         }
 
         if (search.category() != null && !search.category().isBlank()) {
             predicates.add(cb.equal(
                     cb.lower(publication.get("category")),
-                    search.category().toLowerCase()));
+                    search.category().toLowerCase(Locale.ROOT)));
         }
 
         if (search.modality() != null) {
@@ -201,23 +202,20 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
                     search.maximumPrice()));
         }
 
+        if (search.skill() != null && !search.skill().isBlank()) {
+            var skillMatches = criteria.subquery(Integer.class);
+            Root<PublicationTagEntity> tag = skillMatches.from(PublicationTagEntity.class);
+            skillMatches.select(cb.literal(1)).where(
+                    cb.equal(tag.get("publication").get("id"), publication.get("id")),
+                    cb.equal(cb.lower(tag.get("id").get("tag")),
+                            search.skill().toLowerCase(Locale.ROOT)));
+            predicates.add(cb.exists(skillMatches));
+        }
+
         if (search.minimumReputation() != null) {
-            var profileSubquery = criteria.subquery(Integer.class);
-            Root<ProfileEntity> profile =
-                    profileSubquery.from(ProfileEntity.class);
-
-            profileSubquery.select(cb.literal(1))
-                    .where(
-                            cb.equal(
-                                    profile.get("userId"),
-                                    publication.get("authorUserId")),
-                            cb.greaterThanOrEqualTo(
-                                    profile.<java.math.BigDecimal>get("reputation"),
-                                    java.math.BigDecimal.valueOf(
-                                            search.minimumReputation()))
-                    );
-
-            predicates.add(cb.exists(profileSubquery));
+            predicates.add(cb.greaterThanOrEqualTo(
+                    author.<java.math.BigDecimal>get("reputation"),
+                    java.math.BigDecimal.valueOf(search.minimumReputation())));
         }
 
         return predicates.toArray(Predicate[]::new);
@@ -237,6 +235,7 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
                     cb.desc(publication.get("createdAt")));
             case BEST_RATING -> List.of(
                     cb.desc(author.get("reputation")),
+                    cb.desc(author.get("ratingCount")),
                     cb.desc(publication.get("createdAt")));
             case RELEVANCE -> List.of(
                     cb.desc(publication.get("requestCount")),
@@ -245,6 +244,14 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
         // A unique final key keeps page boundaries stable when prices/dates tie.
         orders.add(cb.asc(publication.get("id")));
         return orders;
+    }
+
+    private static String containsPattern(String value) {
+        String escaped = value.toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        return "%" + escaped + "%";
     }
 
     @Override

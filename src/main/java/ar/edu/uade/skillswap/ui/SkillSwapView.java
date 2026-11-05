@@ -52,7 +52,107 @@ public final class SkillSwapView extends JPanel {
     private void showExplore(){showExplore("");}
     private void showExplore(String initial){showExploreWith(initial,"Todas");}
     private void showExploreCategory(String category){showExploreWith("",category);}
-    private void showExploreWith(String initial,String category){JPanel p=base();JPanel filters=card(new FlowLayout(FlowLayout.LEFT,10,0));filters.setAlignmentX(LEFT_ALIGNMENT);JTextField q=new JTextField(initial,24);q.setBorder(new EmptyBorder(10,12,10,12));JComboBox<String> cat=new JComboBox<>(controllers.busqueda().categorias().toArray(String[]::new));cat.setSelectedItem(category);JComboBox<String> order=new JComboBox<>(new String[]{"Relevancia","Mejor reputación","Menor precio"});JButton go=button("Buscar",true);filters.add(q);filters.add(cat);filters.add(order);filters.add(go);p.add(filters);p.add(Box.createVerticalStrut(22));JPanel results=new JPanel();results.setOpaque(false);results.setLayout(new BoxLayout(results,BoxLayout.Y_AXIS));Runnable refresh=()->{results.removeAll();List<Publicacion> list=controllers.busqueda().buscar(new FiltrosBusqueda(q.getText(),(String)cat.getSelectedItem(),null,0,(String)order.getSelectedItem()));addSection(results,list.size()+" resultados","Mentorías y servicios disponibles");results.add(cardGrid(list));results.revalidate();results.repaint();};go.addActionListener(uiAction(e->refresh.run()));q.addActionListener(uiAction(e->refresh.run()));p.add(results);refresh.run();page("Explorar",p);}
+    private static final int TAMANIO_PAGINA_EXPLORAR = 3;
+    private static final String[] ORDENES = {"Relevancia", "Mejor reputación", "Menor precio", "Más recientes"};
+    private static final String[] MODALIDADES = {"Todas las modalidades", "Remota", "Presencial", "Híbrida"};
+    private static final String[] REPUTACIONES = {"Cualquier reputación", "★ 3 o más", "★ 4 o más", "★ 4.5 o más"};
+
+    private void showExploreWith(String initial, String category) {
+        JPanel p = base();
+        JPanel filters = card(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filters.setAlignmentX(LEFT_ALIGNMENT);
+        JTextField q = new JTextField(initial, 24);
+        q.setBorder(new EmptyBorder(10, 12, 10, 12));
+        JComboBox<String> cat = new JComboBox<>(controllers.busqueda().categorias().toArray(String[]::new));
+        cat.setSelectedItem(category);
+        JComboBox<String> order = new JComboBox<>(ORDENES);
+        JButton go = button("Buscar", true);
+        filters.add(q);
+        filters.add(cat);
+        filters.add(order);
+        filters.add(go);
+        p.add(filters);
+        p.add(Box.createVerticalStrut(10));
+
+        JPanel more = card(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        more.setAlignmentX(LEFT_ALIGNMENT);
+        JComboBox<String> modality = new JComboBox<>(MODALIDADES);
+        JTextField skill = new JTextField(10);
+        skill.putClientProperty("JTextField.placeholderText", "Habilidad");
+        JSpinner minPrice = new JSpinner(new SpinnerNumberModel(0, 0, 100000, 10));
+        JSpinner maxPrice = new JSpinner(new SpinnerNumberModel(0, 0, 100000, 10));
+        JComboBox<String> reputation = new JComboBox<>(REPUTACIONES);
+        more.add(modality);
+        more.add(label("Habilidad", SMALL, MUTED));
+        more.add(skill);
+        more.add(label("Precio mín.", SMALL, MUTED));
+        more.add(minPrice);
+        more.add(label("máx. (0 = sin límite)", SMALL, MUTED));
+        more.add(maxPrice);
+        more.add(reputation);
+        p.add(more);
+        p.add(Box.createVerticalStrut(22));
+
+        JPanel results = new JPanel();
+        results.setOpaque(false);
+        results.setLayout(new BoxLayout(results, BoxLayout.Y_AXIS));
+        int[] currentPage = {0};
+        Runnable[] refresh = new Runnable[1];
+        refresh[0] = () -> {
+            PaginaPublicaciones page = controllers.busqueda().buscar(new FiltrosBusqueda(q.getText(),
+                    (String) cat.getSelectedItem(), modalidad(modality.getSelectedIndex()), skill.getText(),
+                    positivoONulo(minPrice), positivoONulo(maxPrice), reputacionMinima(reputation.getSelectedIndex()),
+                    (String) order.getSelectedItem(), currentPage[0], TAMANIO_PAGINA_EXPLORAR));
+            results.removeAll();
+            String pages = page.totalPaginas() == 0 ? "" : " · Página " + (page.pagina() + 1) + " de " + page.totalPaginas();
+            addSection(results, page.total() + " resultados" + pages, "Mentorías y servicios disponibles");
+            results.add(cardGrid(page.items()));
+            JPanel pager = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 12));
+            pager.setOpaque(false);
+            pager.setAlignmentX(LEFT_ALIGNMENT);
+            JButton previous = button("← Anterior", false);
+            previous.setEnabled(page.hayAnterior());
+            previous.addActionListener(uiAction(e -> { currentPage[0]--; refresh[0].run(); }));
+            JButton next = button("Siguiente →", false);
+            next.setEnabled(page.haySiguiente());
+            next.addActionListener(uiAction(e -> { currentPage[0]++; refresh[0].run(); }));
+            pager.add(previous);
+            pager.add(next);
+            results.add(pager);
+            results.revalidate();
+            results.repaint();
+        };
+        Runnable search = () -> { currentPage[0] = 0; refresh[0].run(); };
+        go.addActionListener(uiAction(e -> search.run()));
+        q.addActionListener(uiAction(e -> search.run()));
+        skill.addActionListener(uiAction(e -> search.run()));
+        p.add(results);
+        search.run();
+        page("Explorar", p);
+    }
+
+    private static Modalidad modalidad(int index) {
+        return switch (index) {
+            case 1 -> Modalidad.REMOTA;
+            case 2 -> Modalidad.PRESENCIAL;
+            case 3 -> Modalidad.HIBRIDA;
+            default -> null;
+        };
+    }
+
+    private static Double reputacionMinima(int index) {
+        return switch (index) {
+            case 1 -> 3.0;
+            case 2 -> 4.0;
+            case 3 -> 4.5;
+            default -> null;
+        };
+    }
+
+    private static Integer positivoONulo(JSpinner spinner) {
+        int value = (Integer) spinner.getValue();
+        return value > 0 ? value : null;
+    }
 
     private JPanel cardGrid(List<Publicacion> list){JPanel grid=new JPanel(new GridLayout(0,3,14,14));grid.setOpaque(false);grid.setAlignmentX(LEFT_ALIGNMENT);for(Publicacion x:list)grid.add(listingCard(x));return grid;}
     private JComponent listingCard(Publicacion x){JPanel c=card(new BorderLayout(0,12));JPanel top=new JPanel(new BorderLayout());top.setOpaque(false);top.add(pill(x.categoria(),TEAL),BorderLayout.WEST);top.add(label("★ "+x.reputacion(),H3,GOLD),BorderLayout.EAST);c.add(top,BorderLayout.NORTH);JPanel mid=new JPanel();mid.setOpaque(false);mid.setLayout(new BoxLayout(mid,BoxLayout.Y_AXIS));JLabel t=label("<html><div style='width:210px'>"+x.titulo()+"</div></html>",H3,TEXT);mid.add(t);mid.add(Box.createVerticalStrut(7));mid.add(label("Por "+x.proveedor(),SMALL,MUTED));mid.add(Box.createVerticalStrut(9));mid.add(label("<html><div style='width:215px;color:#677480'>"+x.descripcion()+"</div></html>",BODY,MUTED));mid.add(Box.createVerticalStrut(9));mid.add(label(x.modalidad()+"  ·  "+x.duracionMinutos()+" min",SMALL,MUTED));c.add(mid);JPanel bottom=new JPanel(new BorderLayout());bottom.setOpaque(false);bottom.add(label(x.precio()+" ◈",new Font("SansSerif",Font.BOLD,20),NAVY),BorderLayout.WEST);JButton detail=button("Ver detalle",true);detail.addActionListener(uiAction(e->showDetail(x)));bottom.add(detail,BorderLayout.EAST);c.add(bottom,BorderLayout.SOUTH);return c;}

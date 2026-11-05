@@ -7,8 +7,8 @@ La capa de aplicación coordina los casos de uso. Recibe comandos y consultas, o
 | Servicio | Responsabilidad | Casos relacionados |
 | --- | --- | --- |
 | `ProfileService` | Coordinar alta, consulta, actualización y baja lógica del perfil. | #14 |
-| `PublicationService` | Coordinar borradores, edición, publicación y consulta propia. | #15 |
-| `DiscoveryService` | Aplicar filtros/paginación y pedir recomendaciones a la estrategia de dominio configurada. | #16–17 |
+| `PublicationService` | Coordinar borradores, edición, publicación y consulta propia; las vistas incluyen el perfil público del autor. | #15 |
+| `DiscoveryService` | Delegar la búsqueda paginada en `PublicationRepository.searchPublished`, armar las vistas con los datos públicos del autor (una lectura de perfiles por página) y pedir recomendaciones a la estrategia de dominio configurada. Ver [decisión de búsqueda](decision-busqueda.md). | #16–17 |
 | `BookingService` | Orquestar solicitud, aceptación, pago, cancelación, reintegro, reprogramación y cierre dentro de transacciones. | #18–20 |
 | `WalletService` | Consultar saldo y movimientos; los débitos y créditos se coordinan desde el caso de uso que los origina. | #19 |
 | `RatingService` | Evitar duplicados y delegar al dominio la verificación de contratación y participantes; luego coordinar reputación y evento. | #21 |

@@ -5,12 +5,14 @@ import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView;
 import ar.edu.uade.skillswap.application.model.ProfileData.AvailabilityView;
 import ar.edu.uade.skillswap.application.model.ProfileData.ProfileView;
+import ar.edu.uade.skillswap.application.model.PublicationData.AuthorView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.model.WalletData.MovementView;
 import ar.edu.uade.skillswap.domain.model.BookingStatus;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
 import ar.edu.uade.skillswap.model.Models;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -27,9 +29,10 @@ class UiModelMapperTest {
     void conviertePublicacionYCalculaCuposDisponibles() {
         var view = new PublicationView("p1", "u1", "Java", "Mentoría", "Tecnología",
                 Modality.REMOTE, 60, 4, 120, Set.of("Java"), PublicationStatus.PUBLISHED,
-                List.of(new AvailabilityView("f1", fecha, fecha.plusHours(1), 4, 3)), fecha, 2);
+                List.of(new AvailabilityView("f1", fecha, fecha.plusHours(1), 4, 3)), fecha, 2,
+                new AuthorView("u1", "Julieta", 4.5, 3));
 
-        var dto = mapper.toPublicacion(view, "Julieta", 4.5);
+        var dto = mapper.toPublicacion(view);
 
         assertEquals("p1", dto.id());
         assertEquals("Java", dto.titulo());
@@ -76,6 +79,7 @@ class UiModelMapperTest {
         assertEquals("Java", defaults.text());
         assertNull(defaults.category());
         assertNull(defaults.modality());
+        assertNull(defaults.skill());
         assertNull(defaults.maximumPrice());
         assertEquals(SearchOrder.RELEVANCE, defaults.order());
         assertEquals(0, defaults.page());
@@ -89,17 +93,21 @@ class UiModelMapperTest {
         assertEquals(SearchOrder.LOWEST_PRICE, query.order());
         assertEquals(SearchOrder.BEST_RATING, mapper.toSearchQuery(
                 new Models.FiltrosBusqueda("", null, null, 0, "Mejor reputación")).order());
+        assertEquals(SearchOrder.MOST_RECENT, mapper.toSearchQuery(
+                new Models.FiltrosBusqueda("", null, null, 0, "Más recientes")).order());
+        assertThrows(IllegalArgumentException.class, () -> mapper.toSearchQuery(
+                new Models.FiltrosBusqueda("", null, null, 0, "Alfabético")));
     }
 
     @Test
     void convierteTodasLasModalidadesYEstadosSinDependerDelOrdenDeLosEnums() {
-        var modalities = java.util.Map.of(Modality.REMOTE, Models.Modalidad.REMOTA,
+        var modalities = Map.of(Modality.REMOTE, Models.Modalidad.REMOTA,
                 Modality.IN_PERSON, Models.Modalidad.PRESENCIAL, Modality.HYBRID, Models.Modalidad.HIBRIDA);
         modalities.forEach((domain, ui) -> {
             assertEquals(ui, mapper.toModalidad(domain));
             assertEquals(domain, mapper.toModality(ui));
         });
-        var publications = java.util.Map.of(PublicationStatus.DRAFT, Models.EstadoPublicacion.BORRADOR,
+        var publications = Map.of(PublicationStatus.DRAFT, Models.EstadoPublicacion.BORRADOR,
                 PublicationStatus.PUBLISHED, Models.EstadoPublicacion.PUBLICADA,
                 PublicationStatus.PAUSED, Models.EstadoPublicacion.PAUSADA,
                 PublicationStatus.CLOSED, Models.EstadoPublicacion.CERRADA,
@@ -108,7 +116,7 @@ class UiModelMapperTest {
             assertEquals(ui, mapper.toEstadoPublicacion(domain));
             assertEquals(domain, mapper.toPublicationStatus(ui));
         });
-        var bookings = java.util.Map.of(BookingStatus.PENDING, Models.EstadoContratacion.PENDIENTE,
+        var bookings = Map.of(BookingStatus.PENDING, Models.EstadoContratacion.PENDIENTE,
                 BookingStatus.ACCEPTED, Models.EstadoContratacion.ACEPTADA,
                 BookingStatus.CONFIRMED, Models.EstadoContratacion.CONFIRMADA,
                 BookingStatus.IN_PROGRESS, Models.EstadoContratacion.EN_CURSO,

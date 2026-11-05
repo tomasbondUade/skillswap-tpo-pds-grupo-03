@@ -88,7 +88,7 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
                                       MockEmailClient emailClient, MockPushClient pushClient,
                                       ProfileRepository profiles) {
         this(identityClient, emailClient, pushClient, profiles,
-                new InMemoryPublicationRepository(), new InMemoryBookingRepository(),
+                new InMemoryPublicationRepository(profiles), new InMemoryBookingRepository(),
                 new InMemoryWalletRepository(), new InMemoryRatingRepository(),
                 new InMemoryNotificationRepository(), new SynchronousTransactionManager(), () -> {});
     }
@@ -136,7 +136,7 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
         ratingNotifications = new RatingNotificationEventPublisher(profiles, factory);
 
         profileService = new ProfileApplicationService(profiles, currentUser, transactions);
-        publicationService = new PublicationApplicationService(publications, currentUser, transactions);
+        publicationService = new PublicationApplicationService(publications, profiles, currentUser, transactions);
         discoveryService = new DiscoveryApplicationService(publications, profiles, currentUser, recommendationStrategy);
         bookingService = new BookingApplicationService(bookings, publications, wallets,
                 currentUser, transactions, refundPolicy, events);
@@ -258,6 +258,10 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
             .build();
         publication.publish(authorId);
         publications.save(publication);
+    }
+
+    public CurrentUserProvider currentUserProvider() {
+        return currentUser;
     }
 
     public ProfileApplicationService profileService() {
