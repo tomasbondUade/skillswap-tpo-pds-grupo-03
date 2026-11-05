@@ -59,13 +59,15 @@ de uso reales y repositorios en memoria cubren crear/consultar perfil, duplicado
 editar/publicar/pausar, propiedad del recurso, entradas inválidas y recursos ausentes.
 También se prueba la fachada de Swing y la compatibilidad del mock.
 
-Validación: `mvn clean test`, 119 pruebas sin fallos ni errores. La combinación
-con el PR #61 pasa 134 pruebas. También se comprobó el inicio de Swing mediante
-el modo de captura de la aplicación.
+Validación del 05/11/2026: `mvn -Pmysql-it test`, 234 pruebas, sin fallos, errores
+ni omisiones, contra MySQL 8.4.13. Se conservan las pruebas de búsqueda paginada,
+identidad y permisos del contrato actual. La revisión adapta los controllers y
+sus fixtures a `PublicationView.author`, reutiliza `BusquedaUiController` para
+búsqueda/recomendaciones y evita inventar nombres o reputaciones en presentación.
 
 La rama se actualizó sobre `main` después de la integración del PR #62, y el PR #63
 ahora apunta a `main`. El controller recibe el proveedor de identidad del wiring;
-al integrar el PR #61, ese puerto se conectará con su adapter de identidad.
+el PR #61 ya está integrado en la base con su adapter de identidad y el modo JPA.
 
 Se mantiene la interfaz gráfica entregada. La incorporación de controles visuales
 para las nuevas operaciones pertenece al ensamblado final de la UI de la #33.
