@@ -193,6 +193,38 @@ class WiredUiControllersTest {
             .allMatch(Models.Notificacion::leida));
         }
 
+    @Test
+    void ofreceLosTiposDelUsuarioYCreaElBorradorDelTipoElegido() {
+        var controllers = new WiredUiControllers();
+
+        assertEquals(List.of(Models.TipoPublicacion.MENTORIA, Models.TipoPublicacion.SERVICIO),
+                controllers.publicaciones().tiposPublicacion("user-mateo"));
+        var service = controllers.publicaciones().crearBorrador("user-mateo", "Revisión de CV",
+                "Correcciones y sugerencias.", "Tecnología", Modalidad.REMOTA, 60, 90,
+                Models.TipoPublicacion.SERVICIO);
+        var withoutType = controllers.publicaciones().crearBorrador("user-mateo", "Mentoría Java",
+                "Sesión práctica.", "Tecnología", Modalidad.REMOTA, 60, 90);
+
+        assertEquals(Models.TipoPublicacion.SERVICIO, service.tipo());
+        assertEquals(Models.TipoPublicacion.MENTORIA, withoutType.tipo());
+        assertTrue(controllers.publicaciones().listarPropias("user-mateo").stream()
+                .anyMatch(item -> item.id().equals(service.id())
+                        && item.tipo() == Models.TipoPublicacion.SERVICIO));
+    }
+
+    @Test
+    void rechazaUnTipoQueElUsuarioNoPuedeCrearComoPermisos() {
+        var controllers = new WiredUiControllers();
+        int before = controllers.publicaciones().listarPropias("user-mateo").size();
+
+        var error = assertThrows(PresentationException.class, () -> controllers.publicaciones().crearBorrador(
+                "user-mateo", "Hackatón", "Desafío abierto.", "Tecnología", Modalidad.REMOTA, 60, 90,
+                Models.TipoPublicacion.DESAFIO));
+
+        assertEquals(Models.CodigoError.PERMISOS, error.error().codigo());
+        assertEquals(before, controllers.publicaciones().listarPropias("user-mateo").size());
+    }
+
         @Test
         void creaBorradoresPublicablesConDisponibilidadValida() {
         var controllers = new WiredUiControllers();

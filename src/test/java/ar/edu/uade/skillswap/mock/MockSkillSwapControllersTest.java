@@ -1,8 +1,12 @@
 package ar.edu.uade.skillswap.mock;
 
+import ar.edu.uade.skillswap.model.Models.EstadoPublicacion;
 import ar.edu.uade.skillswap.model.Models.FiltrosBusqueda;
 import ar.edu.uade.skillswap.model.Models.EstadoContratacion;
+import ar.edu.uade.skillswap.model.Models.Modalidad;
 import ar.edu.uade.skillswap.model.Models.Publicacion;
+import ar.edu.uade.skillswap.model.Models.TipoPublicacion;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -19,6 +23,22 @@ class MockSkillSwapControllersTest {
 
         assertFalse(resultados.isEmpty());
         assertTrue(resultados.stream().anyMatch(p -> p.titulo().contains("Arquitectura")));
+    }
+
+    @Test
+    void ofreceLosTiposDelProfesionalYConservaElTipoElegido() {
+        var controllers = new MockSkillSwapControllers();
+
+        assertEquals(List.of(TipoPublicacion.MENTORIA, TipoPublicacion.SERVICIO),
+                controllers.publicaciones().tiposPublicacion("user-mateo"));
+        var draft = controllers.publicaciones().crearBorrador("user-mateo", "Revisión de CV", "Correcciones",
+                "Tecnología", Modalidad.REMOTA, 60, 90, TipoPublicacion.SERVICIO);
+        var published = controllers.publicaciones().cambiarEstado("user-mateo", draft.id(),
+                EstadoPublicacion.PUBLICADA);
+
+        assertEquals(TipoPublicacion.SERVICIO, published.tipo());
+        assertThrows(IllegalArgumentException.class, () -> controllers.publicaciones().crearBorrador("user-mateo",
+                "Hackatón", "Desafío", "Tecnología", Modalidad.REMOTA, 60, 90, TipoPublicacion.DESAFIO));
     }
 
     @Test

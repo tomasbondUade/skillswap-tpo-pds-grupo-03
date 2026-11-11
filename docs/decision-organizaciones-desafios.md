@@ -23,7 +23,7 @@ La única regla que distingue a los tipos es quién puede crear cada uno.
 3. **El tipo de actor define las opciones, no un único tipo.** `ActorType` concentra la regla: el profesional puede crear mentorías y servicios, y la organización, desafíos (`publicationTypes()`, `canPublish(tipo)`). Agregar un tipo de publicación, o habilitarlo para otro actor, solo cambia ese enum; no hay condicionales por tipo en el resto del código.
 4. **El autor elige el tipo y el dominio lo valida.** `Publication.draft(...)` y `Publication.builder(...)` reciben el tipo de actor del autor y el tipo elegido, y rechazan con `SecurityException` (`FORBIDDEN` en Application, `PERMISOS` en la UI) un tipo que el actor no puede crear. La UI va a ofrecer solo las opciones válidas, pero ese filtro no reemplaza la validación. `Publication` no conoce a `Profile`: solo recibe el dato que necesita, como ya recibe el id del autor.
 5. **Opciones para la UI.** `PublicationUseCases.allowedPublicationTypes()` devuelve los tipos que puede crear el usuario actual, en orden, para armar el selector del formulario.
-6. **Tipo por defecto mientras la UI no lo envíe.** Si `CreateDraftCommand` llega sin tipo, se usa el primero que puede crear el actor (`defaultPublicationType()`): mentoría para un profesional y desafío para una organización. Así la pantalla actual sigue creando borradores hasta que #6 agregue el selector.
+6. **Tipo por defecto si no se elige.** Si `CreateDraftCommand` llega sin tipo, se usa el primero que puede crear el actor (`defaultPublicationType()`): mentoría para un profesional y desafío para una organización. Lo usa el `crearBorrador` anterior de la UI, que se conserva para no romper las ramas que lo llaman.
 7. **Mismos permisos y transiciones para todos los tipos.** El autor es el único que edita, publica, pausa, cierra y cancela, y las transiciones inválidas se rechazan igual (State). Un autor no puede solicitar su propia publicación.
 
 ## Cambios por capa
@@ -33,7 +33,7 @@ La única regla que distingue a los tipos es quién puede crear cada uno.
 | Domain | `ActorType` con sus tipos permitidos y `PublicationType`. `Profile.actorType()` y `Profile.register(userId, actorType, ...)`; el `register` existente sigue creando profesionales. `Publication.type()`; `draft` y `builder` reciben el tipo de actor del autor y el tipo elegido. |
 | Application | `RegisterCommand` recibe el tipo de actor; su constructor anterior registra un profesional. `CreateDraftCommand` recibe el tipo elegido; su constructor anterior lo deja sin elegir. `allowedPublicationTypes()` en `PublicationUseCases`. `ProfileView` y `PublicationView` exponen los tipos. |
 | Infrastructure | Migración V5: columnas `profiles.actor_type` y `publications.publication_type`, con `CHECK` sobre los valores válidos. Las filas existentes quedan como profesionales y mentorías, y el valor por defecto se elimina después para que todo alta indique el tipo. Mapeo JPA y datos de demo. |
-| Presentation | Sin cambios en esta rama. El selector de tipo en "crear borrador" (con `allowedPublicationTypes()`), mostrar el tipo y el alta de organizaciones quedan para #6. |
+| Presentation | `TipoPublicacion` (Mentoría, Servicio, Desafío) en `Models` y en `Publicacion`. `PublicacionController` suma `tiposPublicacion(userId)` y un `crearBorrador` con el tipo elegido; el `crearBorrador` anterior sigue disponible y usa el tipo por defecto. El formulario "Nueva publicación" ofrece solo los tipos del usuario y "Mis publicaciones" muestra el tipo. El mock implementa lo mismo para un profesional. |
 
 ## Alternativas descartadas
 
@@ -54,9 +54,9 @@ La única regla que distingue a los tipos es quién puede crear cada uno.
 
 | Rama | Qué hay que adaptar al integrar |
 | --- | --- |
-| PR #63 (#28) | `PublicationSpy` implementa `PublicationUseCases` y debe sumar `allowedPublicationTypes()`. Sus tests crean `ProfileView` y `PublicationView`, que ahora reciben el tipo (tercer parámetro). Los constructores anteriores de `RegisterCommand` y `CreateDraftCommand` siguen disponibles. |
-| PR #65 (#33, WIP) | El seed y `MySqlPersistenceIntegrationTest` llaman a `Publication.builder(id)`; ahora es `builder(id, actorType, type)`. |
-| #6 (presentación) | Selector de tipo en "crear borrador" con las opciones de `allowedPublicationTypes()`, y mostrar el tipo en las tarjetas. |
+| PR #63 (#28) | `PublicacionUiController` debe implementar `tiposPublicacion(userId)` y el `crearBorrador` con tipo (y llevar el tipo a `DatosBorrador` si se usa esa variante). `PublicationSpy` implementa `PublicationUseCases` y debe sumar `allowedPublicationTypes()`. Sus tests crean `ProfileView` y `PublicationView`, que ahora reciben el tipo (tercer parámetro). Los constructores anteriores de `RegisterCommand`, `CreateDraftCommand` y `Publicacion` siguen disponibles. |
+| PR #65 (#33, WIP) | El seed y `MySqlPersistenceIntegrationTest` llaman a `Publication.builder(id)`; ahora es `builder(id, actorType, type)`. Su mock implementa `PublicacionController`, así que también suma las dos operaciones nuevas. Los cambios de `SkillSwapView` no tocan las mismas líneas. |
+| #6 (presentación) | Mostrar el tipo en las tarjetas de Explorar y el detalle, y el alta de organizaciones desde la UI. |
 | #26 (datos demo) | Agregar al seed una organización con un desafío publicado y un servicio de un profesional. |
 
 ## Evidencia
@@ -67,4 +67,6 @@ La única regla que distingue a los tipos es quién puede crear cada uno.
 | `ProfileApplicationServiceTest` | Registro de una organización, tipo en la vista y comando sin tipo rechazado. |
 | `PublicationApplicationServiceTest` | Tipo elegido permitido y rechazado (`FORBIDDEN`), tipo por defecto si no se elige, opciones del usuario actual y usuario sin perfil. |
 | `ActorAndPublicationTypeMapperTest` | Ida y vuelta de ambos tipos entre dominio y entidades JPA. |
+| `WiredUiControllersTest` | Opciones del usuario de la demo, borrador del tipo elegido y sin tipo, tipo en "Mis publicaciones" y tipo no permitido como `PERMISOS` sin crear nada. |
+| `MockSkillSwapControllersTest` / `UiModelMapperTest` | El mock ofrece y conserva el tipo; conversión de los tres tipos entre Application y la UI. |
 | `MySqlPersistenceIntegrationTest` | Organización y desafío en MySQL real, incluida la búsqueda; migración desde V4 que completa filas existentes y rechaza filas sin tipo o con un tipo inválido. |

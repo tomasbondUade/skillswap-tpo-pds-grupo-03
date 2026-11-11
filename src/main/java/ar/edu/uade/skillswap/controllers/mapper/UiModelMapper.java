@@ -11,6 +11,7 @@ import ar.edu.uade.skillswap.application.model.WalletData.MovementView;
 import ar.edu.uade.skillswap.domain.model.BookingStatus;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.model.Models;
 
 /** Converts application results to the simple data models used by the Swing UI. */
@@ -39,7 +40,25 @@ public final class UiModelMapper {
                 false, view.availability().stream()
                     .map(slot -> new Models.FranjaDisponibilidad(slot.id(), slot.startsAt(), slot.endsAt(),
                             slot.capacity() - slot.reserved()))
-                    .toList());
+                    .toList(), toTipoPublicacion(view.type()));
+    }
+
+    public Models.TipoPublicacion toTipoPublicacion(PublicationType type) {
+        return switch (type) {
+            case MENTORSHIP -> Models.TipoPublicacion.MENTORIA;
+            case SERVICE -> Models.TipoPublicacion.SERVICIO;
+            case CHALLENGE -> Models.TipoPublicacion.DESAFIO;
+        };
+    }
+
+    /** {@code null} significa que no se eligió tipo; Application usa el predeterminado del autor. */
+    public PublicationType toPublicationType(Models.TipoPublicacion tipo) {
+        if (tipo == null) return null;
+        return switch (tipo) {
+            case MENTORIA -> PublicationType.MENTORSHIP;
+            case SERVICIO -> PublicationType.SERVICE;
+            case DESAFIO -> PublicationType.CHALLENGE;
+        };
     }
 
     public Models.Contratacion toContratacion(BookingView view, String titulo, String contraparte) {

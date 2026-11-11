@@ -28,6 +28,17 @@ class UiModelMapperTest {
     private final LocalDateTime fecha = LocalDateTime.of(2026, 11, 3, 15, 0);
 
     @Test
+    void convierteLosTiposDePublicacionEnAmbosSentidos() {
+        for (PublicationType type : PublicationType.values()) {
+            assertEquals(type, mapper.toPublicationType(mapper.toTipoPublicacion(type)));
+        }
+        assertEquals(Models.TipoPublicacion.DESAFIO, mapper.toTipoPublicacion(PublicationType.CHALLENGE));
+        assertEquals(PublicationType.SERVICE, mapper.toPublicationType(Models.TipoPublicacion.SERVICIO));
+        assertNull(mapper.toPublicationType(null));
+        assertEquals("Mentoría", Models.TipoPublicacion.MENTORIA.toString());
+    }
+
+    @Test
     void conviertePublicacionYCalculaCuposDisponibles() {
         var view = new PublicationView("p1", "u1", PublicationType.MENTORSHIP, "Java", "Mentoría", "Tecnología",
                 Modality.REMOTE, 60, 4, 120, Set.of("Java"), PublicationStatus.PUBLISHED,
@@ -47,6 +58,7 @@ class UiModelMapperTest {
         assertEquals(4.5, dto.reputacion());
         assertEquals(List.of("Java"), dto.etiquetas());
         assertEquals(Models.EstadoPublicacion.PUBLICADA, dto.estado());
+        assertEquals(Models.TipoPublicacion.MENTORIA, dto.tipo());
         assertFalse(dto.destacada());
         assertEquals(new Models.FranjaDisponibilidad("f1", fecha, fecha.plusHours(1), 1),
                 dto.franjasDisponibles().get(0));

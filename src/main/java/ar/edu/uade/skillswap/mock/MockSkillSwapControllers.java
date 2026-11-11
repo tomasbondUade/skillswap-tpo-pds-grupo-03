@@ -20,12 +20,12 @@ public final class MockSkillSwapControllers implements UiControllers,
 
     public MockSkillSwapControllers() {
         publicaciones.addAll(List.of(
-            pub("p1", "Preparación para entrevistas técnicas", "Simulacro completo, feedback y plan personalizado para tu próxima entrevista.", "Tecnología", Modalidad.REMOTA, 60, 180, 4.9, "Sofía Méndez", List.of("Java", "Entrevistas", "Backend"), true),
-            pub("p2", "Revisión profesional de portfolio", "Mejorá la narrativa y presentación de tus proyectos para destacarte.", "Diseño", Modalidad.REMOTA, 45, 120, 4.8, "Tomás Vidal", List.of("UX", "Portfolio", "Carrera"), true),
-            pub("p3", "Arquitectura limpia aplicada", "Sesión práctica para ordenar dependencias y casos de uso en proyectos Java.", "Tecnología", Modalidad.HIBRIDA, 90, 260, 5.0, "Camila Torres", List.of("Clean Architecture", "SOLID", "Java"), true),
-            pub("p4", "Fotografía de producto con celular", "Iluminación, encuadre y edición simple para catálogos y redes.", "Creatividad", Modalidad.PRESENCIAL, 75, 150, 4.7, "Nicolás Paz", List.of("Fotografía", "Contenido"), false),
-            pub("p5", "Mentoría de liderazgo para equipos", "Herramientas concretas para conversaciones, feedback y delegación.", "Negocios", Modalidad.REMOTA, 60, 220, 4.9, "Laura Rossi", List.of("Liderazgo", "Equipos"), false),
-            pub("p6", "Excel para decisiones de negocio", "Tablas dinámicas, escenarios y un dashboard listo para reutilizar.", "Productividad", Modalidad.REMOTA, 90, 140, 4.6, "Martín Aguirre", List.of("Excel", "Datos"), false)
+            pub("p1", "Preparación para entrevistas técnicas", "Simulacro completo, feedback y plan personalizado para tu próxima entrevista.", "Tecnología", Modalidad.REMOTA, 60, 180, 4.9, "Sofía Méndez", List.of("Java", "Entrevistas", "Backend"), true, TipoPublicacion.MENTORIA),
+            pub("p2", "Revisión profesional de portfolio", "Mejorá la narrativa y presentación de tus proyectos para destacarte.", "Diseño", Modalidad.REMOTA, 45, 120, 4.8, "Tomás Vidal", List.of("UX", "Portfolio", "Carrera"), true, TipoPublicacion.SERVICIO),
+            pub("p3", "Arquitectura limpia aplicada", "Sesión práctica para ordenar dependencias y casos de uso en proyectos Java.", "Tecnología", Modalidad.HIBRIDA, 90, 260, 5.0, "Camila Torres", List.of("Clean Architecture", "SOLID", "Java"), true, TipoPublicacion.MENTORIA),
+            pub("p4", "Fotografía de producto con celular", "Iluminación, encuadre y edición simple para catálogos y redes.", "Creatividad", Modalidad.PRESENCIAL, 75, 150, 4.7, "Nicolás Paz", List.of("Fotografía", "Contenido"), false, TipoPublicacion.SERVICIO),
+            pub("p5", "Mentoría de liderazgo para equipos", "Herramientas concretas para conversaciones, feedback y delegación.", "Negocios", Modalidad.REMOTA, 60, 220, 4.9, "Laura Rossi", List.of("Liderazgo", "Equipos"), false, TipoPublicacion.MENTORIA),
+            pub("p6", "Excel para decisiones de negocio", "Tablas dinámicas, escenarios y un dashboard listo para reutilizar.", "Productividad", Modalidad.REMOTA, 90, 140, 4.6, "Martín Aguirre", List.of("Excel", "Datos"), false, TipoPublicacion.MENTORIA)
         ));
         contrataciones.add(new Contratacion("c1", "Revisión profesional de portfolio", "Tomás Vidal", LocalDateTime.now().plusDays(2), 120, EstadoContratacion.CONFIRMADA));
         contrataciones.add(new Contratacion("c2", "Mentoría de liderazgo para equipos", "Laura Rossi", LocalDateTime.now().minusDays(4), 220, EstadoContratacion.COMPLETADA));
@@ -39,14 +39,14 @@ public final class MockSkillSwapControllers implements UiControllers,
 
     private Publicacion pub(String id, String titulo, String descripcion, String categoria,
                             Modalidad modalidad, int duracion, int precio, double reputacion,
-                            String proveedor, List<String> tags, boolean destacada) {
+                            String proveedor, List<String> tags, boolean destacada, TipoPublicacion tipo) {
         LocalDateTime firstStart = LocalDateTime.now().plusDays(3).withHour(10).withMinute(0).withSecond(0).withNano(0);
         List<FranjaDisponibilidad> franjas = List.of(
                 new FranjaDisponibilidad(id + "-slot-1", firstStart, firstStart.plusMinutes(duracion), 1),
                 new FranjaDisponibilidad(id + "-slot-2", firstStart.plusDays(2),
                         firstStart.plusDays(2).plusMinutes(duracion), 1));
         return new Publicacion(id, titulo, descripcion, categoria, modalidad, duracion, precio,
-                reputacion, proveedor, tags, EstadoPublicacion.PUBLICADA, destacada, franjas);
+                reputacion, proveedor, tags, EstadoPublicacion.PUBLICADA, destacada, franjas, tipo);
     }
 
     @Override public BusquedaController busqueda() { return this; }
@@ -87,13 +87,21 @@ public final class MockSkillSwapControllers implements UiControllers,
     @Override public List<Publicacion> listarPropias(String userId) { return publicaciones.stream().filter(p -> p.proveedor().equals("Mateo Silva")).toList(); }
 
     @Override public Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria, Modalidad modalidad, int duracion, int precio) {
-        Publicacion p = new Publicacion(UUID.randomUUID().toString(), titulo, descripcion, categoria, modalidad, duracion, precio, 0, "Mateo Silva", List.of(categoria), EstadoPublicacion.BORRADOR, false);
+        return crearBorrador(userId, titulo, descripcion, categoria, modalidad, duracion, precio, TipoPublicacion.MENTORIA);
+    }
+
+    @Override public Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria, Modalidad modalidad, int duracion, int precio, TipoPublicacion tipo) {
+        if (!tiposPublicacion(userId).contains(tipo)) throw new IllegalArgumentException("Tu perfil no puede crear publicaciones de tipo " + tipo);
+        Publicacion p = new Publicacion(UUID.randomUUID().toString(), titulo, descripcion, categoria, modalidad, duracion, precio, 0, "Mateo Silva", List.of(categoria), EstadoPublicacion.BORRADOR, false, List.of(), tipo);
         publicaciones.add(p); return p;
     }
 
+    /** El usuario de la demo es un profesional. */
+    @Override public List<TipoPublicacion> tiposPublicacion(String userId) { return List.of(TipoPublicacion.MENTORIA, TipoPublicacion.SERVICIO); }
+
     @Override public Publicacion cambiarEstado(String userId, String id, EstadoPublicacion estado) {
         for (int i=0;i<publicaciones.size();i++) if (publicaciones.get(i).id().equals(id)) {
-            Publicacion p=publicaciones.get(i); Publicacion n=new Publicacion(p.id(),p.titulo(),p.descripcion(),p.categoria(),p.modalidad(),p.duracionMinutos(),p.precio(),p.reputacion(),p.proveedor(),p.etiquetas(),estado,p.destacada(),p.franjasDisponibles()); publicaciones.set(i,n); return n;
+            Publicacion p=publicaciones.get(i); Publicacion n=new Publicacion(p.id(),p.titulo(),p.descripcion(),p.categoria(),p.modalidad(),p.duracionMinutos(),p.precio(),p.reputacion(),p.proveedor(),p.etiquetas(),estado,p.destacada(),p.franjasDisponibles(),p.tipo()); publicaciones.set(i,n); return n;
         }
         throw new IllegalArgumentException("Publicación inexistente");
     }
