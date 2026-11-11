@@ -12,10 +12,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/** Agregado de publicación: protege sus invariantes, cupos y transiciones de estado. */
+/**
+ * Agregado de publicación: protege sus invariantes, cupos y transiciones de estado.
+ * Su tipo se elige al crearla entre los que puede crear el actor del autor y no cambia.
+ */
 public final class Publication {
     private final String id;
     private final String authorUserId;
+    private final PublicationType type;
     private String title;
     private String description;
     private String category;
@@ -32,19 +36,20 @@ public final class Publication {
     private LocalDateTime lastRequestedAt;
     private long version;
 
-    /** Inicia la construcción controlada de un borrador de publicación. */
-    public static PublicationBuilder builder(String authorUserId) {
-        return new PublicationBuilder(authorUserId);
+    /** Inicia la construcción controlada de un borrador de un tipo que el autor puede crear. */
+    public static PublicationBuilder builder(String authorUserId, ActorType authorType, PublicationType type) {
+        return new PublicationBuilder(authorUserId, authorType, type);
     }
 
     /** Constructor de reconstitución del agregado desde una capa externa. */
-    public Publication(String id, String authorUserId, String title, String description, String category,
-                       Modality modality, int durationMinutes, int capacity, SkillCoins basePrice,
+    public Publication(String id, String authorUserId, PublicationType type, String title, String description,
+                       String category, Modality modality, int durationMinutes, int capacity, SkillCoins basePrice,
                        Collection<String> tags, Collection<AvailabilitySlot> availability,
                        PublicationState state, LocalDateTime createdAt, int requestCount,
                        LocalDateTime lastRequestedAt, long version, Collection<StatusHistoryEntry> history) {
         this.id = id == null ? UUID.randomUUID().toString() : required(id, "Falta identificador de publicación");
         this.authorUserId = required(authorUserId, "Falta autor de publicación");
+        this.type = Objects.requireNonNull(type, "Falta el tipo de publicación");
         this.title = normalized(title);
         this.description = normalized(description);
         this.category = normalized(category);
@@ -71,12 +76,20 @@ public final class Publication {
         }
     }
 
-    /** Crea un borrador; completar campos obligatorios sigue siendo requisito para publicarlo. */
-    public static Publication draft(String author, String title, String description, String category,
-                                    Modality modality, int duration, int capacity,
-                                    SkillCoins price, Collection<String> tags) {
+    /**
+     * Crea un borrador; completar campos obligatorios sigue siendo requisito para publicarlo.
+     * El tipo debe ser uno de los que puede crear el actor del autor.
+     */
+    public static Publication draft(String author, ActorType authorType, PublicationType type, String title,
+                                    String description, String category, Modality modality, int duration,
+                                    int capacity, SkillCoins price, Collection<String> tags) {
+        Objects.requireNonNull(authorType, "Falta el tipo de actor del autor");
+        Objects.requireNonNull(type, "Falta el tipo de publicación");
+        if (!authorType.canPublish(type)) {
+            throw new SecurityException("El autor no puede crear publicaciones de tipo " + type);
+        }
         LocalDateTime createdAt = LocalDateTime.now();
-        Publication publication = new Publication(null, author, title, description, category, modality,
+        Publication publication = new Publication(null, author, type, title, description, category, modality,
                 duration, capacity, price, tags, List.of(), PublicationStates.draft(), createdAt,
                 0, null, 0, List.of());
         publication.history.add(new StatusHistoryEntry(null, PublicationStatus.DRAFT.name(),
@@ -241,6 +254,7 @@ public final class Publication {
 
     public String id() { return id; }
     public String authorUserId() { return authorUserId; }
+    public PublicationType type() { return type; }
     public String title() { return title; }
     public String description() { return description; }
     public String category() { return category; }

@@ -5,6 +5,7 @@ import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.model.StatusHistoryEntry;
 import ar.edu.uade.skillswap.domain.state.PublicationStates;
@@ -30,6 +31,7 @@ public final class PublicationMapper {
         PublicationEntity entity = new PublicationEntity();
         entity.setId(publication.id());
         entity.setAuthorUserId(publication.authorUserId());
+        entity.setType(publication.type().name());
         entity.setTitle(publication.title());
         entity.setDescription(publication.description());
         entity.setCategory(publication.category());
@@ -114,6 +116,7 @@ public final class PublicationMapper {
         return new Publication(
                 entity.getId(),
                 entity.getAuthorUserId(),
+                PublicationType.valueOf(entity.getType()),
                 entity.getTitle(),
                 entity.getDescription(),
                 entity.getCategory(),

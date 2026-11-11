@@ -241,7 +241,9 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
             return;
         }
 
-        var publication = Publication.builder(authorId)
+        Profile author = profiles.findByUserId(authorId).orElseThrow();
+        var publication = Publication.builder(authorId, author.actorType(),
+                author.actorType().defaultPublicationType())
             .title(title)
             .description(description)
             .category(category)

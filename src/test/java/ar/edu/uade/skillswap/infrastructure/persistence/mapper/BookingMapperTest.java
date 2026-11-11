@@ -1,9 +1,11 @@
 package ar.edu.uade.skillswap.infrastructure.persistence.mapper;
 
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Booking;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Publication;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.infrastructure.persistence.entity.BookingEntity;
 import ar.edu.uade.skillswap.infrastructure.persistence.entity.PublicationEntity;
@@ -21,7 +23,8 @@ class BookingMapperTest {
         String objective = "Practicar diseño de APIs";
         LocalDateTime startsAt = LocalDateTime.of(2026, 11, 12, 10, 0);
         AvailabilitySlot slot = AvailabilitySlot.of(startsAt, startsAt.plusHours(1), 2);
-        Publication publication = Publication.builder("mentor-1")
+        Publication publication = Publication.builder("mentor-1", ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP)
                 .title("Mentoría de Java")
                 .description("Práctica individual")
                 .category("Tecnología")

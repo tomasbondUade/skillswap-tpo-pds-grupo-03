@@ -10,12 +10,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/** Perfil profesional: concentra datos, preferencias y reglas propias de su titular. */
+/**
+ * Perfil de un actor (profesional u organización): concentra datos, preferencias y reglas propias
+ * de su titular. El tipo de actor se fija al registrarse y no cambia.
+ */
 public final class Profile {
     private record RatingIdentity(String bookingId, String authorUserId) {}
 
     private final String id;
     private final String userId;
+    private final ActorType actorType;
     private String displayName;
     private String biography;
     private String timeZone;
@@ -28,22 +32,23 @@ public final class Profile {
     private boolean active;
 
     /** Constructor de reconstitución para adapters de persistencia. */
-    public Profile(String id, String userId, String displayName, String biography, String timeZone,
-                   Collection<String> skills, Collection<String> interests,
+    public Profile(String id, String userId, ActorType actorType, String displayName, String biography,
+                   String timeZone, Collection<String> skills, Collection<String> interests,
                    Collection<NotificationChannelType> notificationChannels, double reputation,
                    int ratingCount, boolean active) {
-        this(id, userId, displayName, biography, timeZone, skills, interests,
+        this(id, userId, actorType, displayName, biography, timeZone, skills, interests,
                 notificationChannels, List.of(), reputation, ratingCount, active);
     }
 
     /** Constructor de reconstitución que también recibe la disponibilidad persistida. */
-    public Profile(String id, String userId, String displayName, String biography, String timeZone,
-                   Collection<String> skills, Collection<String> interests,
+    public Profile(String id, String userId, ActorType actorType, String displayName, String biography,
+                   String timeZone, Collection<String> skills, Collection<String> interests,
                    Collection<NotificationChannelType> notificationChannels,
                    Collection<AvailabilitySlot> availability, double reputation,
                    int ratingCount, boolean active) {
         this.id = id == null ? UUID.randomUUID().toString() : required(id, "Falta identificador de perfil");
         this.userId = required(userId, "userId es obligatorio");
+        this.actorType = Objects.requireNonNull(actorType, "Falta el tipo de actor");
         this.displayName = required(displayName, "El nombre visible es obligatorio");
         this.biography = biography == null ? "" : biography.trim();
         this.timeZone = required(timeZone, "La zona horaria es obligatoria");
@@ -69,11 +74,20 @@ public final class Profile {
         return register(userId, name, biography, timeZone, skills, interests, channels, List.of());
     }
 
+    /** Registra un perfil profesional, el caso de la consigna (§4.1). */
     public static Profile register(String userId, String name, String biography, String timeZone,
                                    Collection<String> skills, Collection<String> interests,
                                    Collection<NotificationChannelType> channels,
                                    Collection<AvailabilitySlot> availability) {
-        return new Profile(null, userId, name, biography, timeZone, skills, interests,
+        return register(userId, ActorType.PROFESSIONAL, name, biography, timeZone, skills, interests,
+                channels, availability);
+    }
+
+    public static Profile register(String userId, ActorType actorType, String name, String biography,
+                                   String timeZone, Collection<String> skills, Collection<String> interests,
+                                   Collection<NotificationChannelType> channels,
+                                   Collection<AvailabilitySlot> availability) {
+        return new Profile(null, userId, actorType, name, biography, timeZone, skills, interests,
                 channels, availability, 0, 0, true);
     }
 
@@ -189,6 +203,7 @@ public final class Profile {
 
     public String id() { return id; }
     public String userId() { return userId; }
+    public ActorType actorType() { return actorType; }
     public String displayName() { return displayName; }
     public String biography() { return biography; }
     public String timeZone() { return timeZone; }

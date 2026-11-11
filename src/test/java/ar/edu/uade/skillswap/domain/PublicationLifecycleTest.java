@@ -1,9 +1,11 @@
 package ar.edu.uade.skillswap.domain;
 
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.model.StatusHistoryEntry;
 import java.time.LocalDateTime;
@@ -163,7 +165,8 @@ class PublicationLifecycleTest {
     }
 
     private static Publication draft(String title, String description, String category, boolean withAvailability) {
-        Publication publication = Publication.draft(AUTHOR, title, description, category,
+        Publication publication = Publication.draft(AUTHOR, ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP, title, description, category,
                 Modality.REMOTE, 60, 2, new SkillCoins(10), Set.of("Java"));
         if (withAvailability) {
             publication.addAvailability(AUTHOR, AvailabilitySlot.of(
@@ -178,7 +181,8 @@ class PublicationLifecycleTest {
     }
 
     private static Publication readyDraft(SkillCoins price) {
-        Publication publication = Publication.draft(AUTHOR, "Java", "Descripción", "Tecnología",
+        Publication publication = Publication.draft(AUTHOR, ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP, "Java", "Descripción", "Tecnología",
                 Modality.REMOTE, 60, 2, price, Set.of("Java"));
         publication.addAvailability(AUTHOR, AvailabilitySlot.of(
                 LocalDateTime.parse("2026-11-01T10:00:00"),

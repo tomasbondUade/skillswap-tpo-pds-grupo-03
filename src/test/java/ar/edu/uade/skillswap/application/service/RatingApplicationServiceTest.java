@@ -8,11 +8,13 @@ import ar.edu.uade.skillswap.application.port.out.BookingRepository;
 import ar.edu.uade.skillswap.application.port.out.DomainEventPublisher;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.application.port.out.RatingRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Booking;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.Rating;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 
@@ -218,7 +220,8 @@ class RatingApplicationServiceTest {
 
     private static Booking completedBooking() {
         Publication publication = Publication.draft(
-                "provider", "Java", "Descripcion", "Tecnologia",
+                "provider", ActorType.PROFESSIONAL, PublicationType.MENTORSHIP, "Java", "Descripcion",
+                "Tecnologia",
                 Modality.REMOTE, 60, 1,
                 new SkillCoins(20), List.of("Java"));
 

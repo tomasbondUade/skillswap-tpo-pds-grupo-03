@@ -13,10 +13,12 @@ import ar.edu.uade.skillswap.application.model.PageResult;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.RecommendationStrategy;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.state.PublicationStates;
@@ -164,7 +166,8 @@ class DiscoveryApplicationServiceTest {
     }
 
     private static Profile profile(String userId, double reputation, int ratingCount) {
-        return new Profile(null, userId, "Nombre " + userId, "", "UTC", Set.of(), Set.of(), Set.of(),
+        return new Profile(null, userId, ActorType.PROFESSIONAL, "Nombre " + userId, "", "UTC",
+                Set.of(), Set.of(), Set.of(),
                 reputation, ratingCount, true);
     }
 
@@ -173,8 +176,9 @@ class DiscoveryApplicationServiceTest {
     }
 
     private static Publication publication(String id, String author, String category, AvailabilitySlot... slots) {
-        return new Publication("pub-" + id, author, "Mentoría " + id, "Descripción", category, Modality.REMOTE,
-                60, 2, new SkillCoins(10), Set.of(), List.of(slots), PublicationStates.published(),
+        return new Publication("pub-" + id, author, PublicationType.MENTORSHIP, "Mentoría " + id, "Descripción",
+                category, Modality.REMOTE, 60, 2, new SkillCoins(10), Set.of(), List.of(slots),
+                PublicationStates.published(),
                 LocalDateTime.now(), 0, null, 0, List.of());
     }
 

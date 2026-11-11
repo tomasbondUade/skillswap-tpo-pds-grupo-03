@@ -8,9 +8,11 @@ import ar.edu.uade.skillswap.application.model.ProfileData.ProfileView;
 import ar.edu.uade.skillswap.application.model.PublicationData.AuthorView;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.model.WalletData.MovementView;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.BookingStatus;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.model.Models;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,7 @@ class UiModelMapperTest {
 
     @Test
     void conviertePublicacionYCalculaCuposDisponibles() {
-        var view = new PublicationView("p1", "u1", "Java", "Mentoría", "Tecnología",
+        var view = new PublicationView("p1", "u1", PublicationType.MENTORSHIP, "Java", "Mentoría", "Tecnología",
                 Modality.REMOTE, 60, 4, 120, Set.of("Java"), PublicationStatus.PUBLISHED,
                 List.of(new AvailabilityView("f1", fecha, fecha.plusHours(1), 4, 3)), fecha, 2,
                 new AuthorView("u1", "Julieta", 4.5, 3));
@@ -62,7 +64,7 @@ class UiModelMapperTest {
 
     @Test
     void conviertePerfilMovimientosYNotificaciones() {
-        var view = new ProfileView("perfil", "u1", "Julieta", "Mentora", "UTC",
+        var view = new ProfileView("perfil", "u1", ActorType.PROFESSIONAL, "Julieta", "Mentora", "UTC",
                 List.of("Java"), List.of(), Set.of(), List.of(), 4.5, 3, true);
 
         assertEquals(new Models.Perfil("u1", "Julieta", "Mentora", "Mentora",

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
@@ -113,9 +114,10 @@ class MySqlPersistenceIntegrationTest {
         initializeJpa();
         seed(1, 500);
         String highId = transactions.required(() -> {
-            profiles.save(new Profile(null, "high", "Alta reputación", "", "UTC",
+            profiles.save(new Profile(null, "high", ActorType.PROFESSIONAL, "Alta reputación", "", "UTC",
                     List.of(), List.of(), Set.of(NotificationChannelType.IN_APP), 4.8, 5, true));
-            Publication high = Publication.builder("high").title("Java avanzada")
+            Publication high = Publication.builder("high", ActorType.PROFESSIONAL, PublicationType.MENTORSHIP)
+                    .title("Java avanzada")
                     .description("Mentoría").category("Tecnología").modality(Modality.REMOTE)
                     .durationMinutes(60).capacity(1).basePrice(new SkillCoins(100))
                     .addAvailability(AvailabilitySlot.of(LocalDateTime.now().plusDays(7).withNano(0),
@@ -340,6 +342,52 @@ class MySqlPersistenceIntegrationTest {
         service("provider").start(command);
         service("buyer").complete(command);
         return booking.id();
+    }
+
+    @Test
+    void organizationAndChallengeTypesSurviveMySqlRoundTrip() {
+        initializeJpa();
+        LocalDateTime start = LocalDateTime.now().plusDays(5).withNano(0);
+        String challengeId = transactions.required(() -> {
+            profiles.save(Profile.register("org-1", ActorType.ORGANIZATION, "Acme", "Empresa", "UTC",
+                    List.of(), List.of(), Set.of(NotificationChannelType.IN_APP), List.of()));
+            Publication challenge = Publication.builder("org-1", ActorType.ORGANIZATION, PublicationType.CHALLENGE)
+                    .title("Hackatón")
+                    .description("Desafío abierto").category("Tecnología").modality(Modality.REMOTE)
+                    .durationMinutes(60).capacity(3).basePrice(new SkillCoins(40))
+                    .addAvailability(AvailabilitySlot.of(start, start.plusHours(1), 3)).build();
+            challenge.publish("org-1");
+            return publications.save(challenge).id();
+        });
+
+        assertEquals(ActorType.ORGANIZATION, profiles.findByUserId("org-1").orElseThrow().actorType());
+        assertEquals(PublicationType.CHALLENGE, publications.findById(challengeId).orElseThrow().type());
+        assertEquals(PublicationType.CHALLENGE, publications.searchPublished(new SearchQuery("Hackatón",
+                null, null, null, null, null, null, null, 0, 10)).items().get(0).type());
+    }
+
+    @Test
+    void upgradeToV5MarksExistingProfilesAsProfessionalsAndPublicationsAsMentorships() throws Exception {
+        flyway("4").migrate();
+        try (var connection = DriverManager.getConnection(url, user, password);
+             var statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO profiles (id,user_id,display_name,time_zone) VALUES "
+                    + "('p1','provider','Ana','UTC')");
+            statement.executeUpdate("INSERT INTO publications (id,author_user_id,title,description,category,"
+                    + "modality,duration_minutes,capacity,base_price,status,created_at) VALUES "
+                    + "('pub','provider','Java','Mentoría','Tecnología','REMOTE',60,1,100,'DRAFT',NOW())");
+        }
+        initializeJpa();
+
+        assertEquals(ActorType.PROFESSIONAL, profiles.findByUserId("provider").orElseThrow().actorType());
+        assertEquals(PublicationType.MENTORSHIP, publications.findById("pub").orElseThrow().type());
+        try (var connection = DriverManager.getConnection(url, user, password);
+             var statement = connection.createStatement()) {
+            assertThrows(SQLException.class, () -> statement.executeUpdate("INSERT INTO profiles "
+                    + "(id,user_id,display_name,time_zone) VALUES ('p2','sin-tipo','Beto','UTC')"));
+            assertThrows(SQLException.class, () -> statement.executeUpdate(
+                    "UPDATE publications SET publication_type='OFFER' WHERE id='pub'"));
+        }
     }
 
     @Test
@@ -572,7 +620,9 @@ class MySqlPersistenceIntegrationTest {
 
     private Publication newPublication(int capacity, int price, String category) {
         LocalDateTime start = LocalDateTime.now().plusDays(7).withNano(0);
-        Publication publication = Publication.builder("provider").title("Java")
+        Publication publication = Publication.builder("provider", ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP)
+                .title("Java")
                 .description("Mentoría Java").category(category).modality(Modality.REMOTE)
                 .durationMinutes(60).capacity(capacity).basePrice(new SkillCoins(price))
                 .addAvailability(AvailabilitySlot.of(start, start.plusHours(1), capacity)).build();

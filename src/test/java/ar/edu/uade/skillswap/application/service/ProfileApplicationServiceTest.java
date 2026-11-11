@@ -10,6 +10,7 @@ import ar.edu.uade.skillswap.application.error.ApplicationException;
 import ar.edu.uade.skillswap.application.model.ProfileData.RegisterCommand;
 import ar.edu.uade.skillswap.application.model.ProfileData.UpdateCommand;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,10 +32,25 @@ class ProfileApplicationServiceTest {
                 List.of("Java"), List.of("Mentoría"), Set.of(), List.of()));
 
         assertEquals("user-1", result.userId());
+        assertEquals(ActorType.PROFESSIONAL, result.actorType());
         assertEquals("Ana", result.displayName());
         assertEquals(Set.of("Java"), Set.copyOf(result.skills()));
         assertTrue(result.active());
         assertEquals(1, transactions.operations);
+    }
+
+    @Test
+    void registersOrganizationWithItsActorType() {
+        var service = new ProfileApplicationService(new InMemoryProfiles(), () -> "org-1",
+                new ImmediateTransactionManager());
+
+        var result = service.register(new RegisterCommand("Acme", "Empresa", "UTC", List.of(), List.of(),
+                Set.of(), List.of(), ActorType.ORGANIZATION));
+
+        assertEquals(ActorType.ORGANIZATION, result.actorType());
+        assertEquals(ActorType.ORGANIZATION, service.viewMyProfile().actorType());
+        assertThrows(IllegalArgumentException.class, () -> new RegisterCommand("Acme", "", "UTC",
+                List.of(), List.of(), Set.of(), List.of(), null));
     }
 
     @Test

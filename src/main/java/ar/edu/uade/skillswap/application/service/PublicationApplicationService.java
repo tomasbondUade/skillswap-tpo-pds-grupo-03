@@ -12,9 +12,11 @@ import ar.edu.uade.skillswap.application.port.out.CurrentUserProvider;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
 import ar.edu.uade.skillswap.application.port.out.TransactionManager;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import java.util.List;
 import java.util.Objects;
@@ -40,7 +42,9 @@ public final class PublicationApplicationService implements PublicationUseCases 
         String actor = UseCaseSupport.currentUserId(currentUser);
         return transactions.required(() -> UseCaseSupport.translateDomainFailures(() -> {
             Profile author = authorProfile(actor);
-            var builder = Publication.builder(actor)
+            ActorType authorType = author.actorType();
+            PublicationType type = command.type() == null ? authorType.defaultPublicationType() : command.type();
+            var builder = Publication.builder(actor, authorType, type)
                     .title(command.title())
                     .description(command.description())
                     .category(command.category())
@@ -93,6 +97,12 @@ public final class PublicationApplicationService implements PublicationUseCases 
         return own.stream()
                 .map(publication -> PublicationApplicationMapper.toView(publication, author))
                 .toList();
+    }
+
+    @Override
+    public List<PublicationType> allowedPublicationTypes() {
+        String actor = UseCaseSupport.currentUserId(currentUser);
+        return List.copyOf(authorProfile(actor).actorType().publicationTypes());
     }
 
     /** Toda publicación tiene autor con perfil (FK en la base); sin perfil no se puede publicar. */

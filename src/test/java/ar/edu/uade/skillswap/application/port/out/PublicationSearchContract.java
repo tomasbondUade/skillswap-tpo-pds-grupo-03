@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchOrder;
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.PageResult;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.state.PublicationState;
 import ar.edu.uade.skillswap.domain.state.PublicationStates;
@@ -323,12 +325,14 @@ public abstract class PublicationSearchContract {
     }
 
     protected static Profile profile(String userId, double reputation, int ratingCount, boolean active) {
-        return new Profile(null, userId, "Nombre " + userId, "", "UTC", Set.of(), Set.of(), Set.of(),
+        return new Profile(null, userId, ActorType.PROFESSIONAL, "Nombre " + userId, "", "UTC",
+                Set.of(), Set.of(), Set.of(),
                 reputation, ratingCount, active);
     }
 
     protected static Profile profileWithSkills(String userId, Set<String> skills) {
-        return new Profile(null, userId, "Nombre " + userId, "", "UTC", skills, Set.of(), Set.of(),
+        return new Profile(null, userId, ActorType.PROFESSIONAL, "Nombre " + userId, "", "UTC",
+                skills, Set.of(), Set.of(),
                 0, 0, true);
     }
 
@@ -364,7 +368,8 @@ public abstract class PublicationSearchContract {
         public PublicationFixture requests(int value) { requests = value; return this; }
 
         public Publication build() {
-            return new Publication(id, author, title, description, category, modality, 60, 5,
+            return new Publication(id, author, PublicationType.MENTORSHIP, title, description, category,
+                    modality, 60, 5,
                     new SkillCoins(price), tags, List.of(), state, created, requests,
                     requests == 0 ? null : created, 0, List.of());
         }

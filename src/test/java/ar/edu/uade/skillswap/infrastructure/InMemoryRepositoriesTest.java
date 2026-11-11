@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ar.edu.uade.skillswap.application.model.DiscoveryData.SearchQuery;
 import ar.edu.uade.skillswap.application.model.PageResult;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +27,7 @@ class InMemoryRepositoriesTest {
         assertEquals("Ana", profiles.findByUserId("user-1").orElseThrow().displayName());
 
         var publications = new InMemoryPublicationRepository(profiles);
-        Publication publication = Publication.builder("user-1")
+        Publication publication = Publication.builder("user-1", ActorType.PROFESSIONAL, PublicationType.MENTORSHIP)
                 .title("Java para principiantes")
                 .description("Mentoría")
                 .category("Tecnología")

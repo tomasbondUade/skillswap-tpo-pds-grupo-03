@@ -1,5 +1,6 @@
 package ar.edu.uade.skillswap.domain;
 
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Booking;
 import ar.edu.uade.skillswap.domain.model.BookingStatus;
@@ -8,6 +9,7 @@ import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.Rating;
 import ar.edu.uade.skillswap.domain.model.RecentPopularityStrategy;
 import ar.edu.uade.skillswap.domain.model.SkillAffinityStrategy;
@@ -319,12 +321,14 @@ class DomainRulesTest {
     }
 
     private static Publication draft(String owner, String title, List<String> tags) {
-        return Publication.draft(owner, title, "Descripción", "Tecnología", Modality.REMOTE,
+        return Publication.draft(owner, ActorType.PROFESSIONAL, PublicationType.MENTORSHIP, title,
+                "Descripción", "Tecnología", Modality.REMOTE,
                 60, 1, new SkillCoins(100), tags);
     }
 
     private static Publication published(String owner, String title, List<String> tags, int requests) {
-        Publication publication = Publication.draft(owner, title, "Descripción", "Tecnología",
+        Publication publication = Publication.draft(owner, ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP, title, "Descripción", "Tecnología",
                 Modality.REMOTE, 60, 2, new SkillCoins(100), tags);
         LocalDateTime startsAt = LocalDateTime.now().plusDays(7);
         publication.addAvailability(owner, AvailabilitySlot.of(startsAt, startsAt.plusHours(1), 2));
