@@ -24,6 +24,9 @@ public class ProfileEntity {
     @Column(name = "user_id", length = 100, nullable = false, unique = true)
     private String userId;
 
+    @Column(name = "actor_type", length = 20, nullable = false)
+    private String actorType;
+
     @Column(name = "display_name", length = 150, nullable = false)
     private String displayName;
 
@@ -83,6 +86,10 @@ public class ProfileEntity {
         return userId;
     }
 
+    public String getActorType() {
+        return actorType;
+    }
+
     public String getDisplayName() {
         return displayName;
     }
@@ -129,6 +136,10 @@ public class ProfileEntity {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public void setActorType(String actorType) {
+        this.actorType = actorType;
     }
 
     public void setDisplayName(String displayName) {

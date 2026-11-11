@@ -6,6 +6,7 @@ hide empty members
 package "domain.model" {
   class Profile {
     - userId: String
+    - actorType: ActorType
     - reputation: double
     - ratingCount: int
     - active: boolean
@@ -26,6 +27,7 @@ package "domain.model" {
 
   class Publication {
     - authorUserId: String
+    - type: PublicationType
     - state: PublicationState
     - basePrice: SkillCoins
     + publish(actor)
@@ -35,6 +37,8 @@ package "domain.model" {
 
   class PublicationBuilder <<Builder>> {
     - authorUserId: String
+    - authorType: ActorType
+    - type: PublicationType
     - title: String
     - description: String
     - category: String
@@ -54,6 +58,19 @@ package "domain.model" {
     + tag(value): PublicationBuilder
     + addAvailability(slot): PublicationBuilder
     + build(): Publication
+  }
+
+  enum ActorType {
+    PROFESSIONAL
+    ORGANIZATION
+    + publicationTypes(): Set<PublicationType>
+    + canPublish(type): boolean
+  }
+
+  enum PublicationType {
+    MENTORSHIP
+    SERVICE
+    CHALLENGE
   }
 
   enum PublicationStatus {
@@ -159,6 +176,10 @@ package "domain.model" {
 Profile "1" *-- "0..*" AvailabilitySlot : disponibilidad
 Publication "1" *-- "0..*" AvailabilitySlot : franjas publicables
 PublicationBuilder ..> Publication : construye borrador
+PublicationBuilder ..> ActorType : tipo del autor
+Profile --> ActorType : tipo de actor
+Publication --> PublicationType : tipo
+ActorType "1..*" --> "1..*" PublicationType : puede crear
 PublicationBuilder ..> AvailabilitySlot : compone disponibilidad
 Publication "1" *-- "0..*" StatusHistoryEntry : historial
 Booking "1" *-- "0..*" StatusHistoryEntry : historial
@@ -197,6 +218,14 @@ note right of Rating
   esté completada y que quien califica sea participante.
   La unicidad por autor y contratación se garantiza
   en el puerto de persistencia/caso de uso.
+end note
+
+note right of ActorType
+  Un profesional puede crear mentorías y servicios; una
+  organización, desafíos. Es la única diferencia entre tipos:
+  datos, estados, permisos del autor y contratación son iguales.
+  El autor elige el tipo al crear el borrador y el dominio
+  rechaza uno que su actor no puede crear.
 end note
 
 note bottom of AvailabilitySlot

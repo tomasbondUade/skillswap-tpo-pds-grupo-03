@@ -3,6 +3,8 @@ package ar.edu.uade.skillswap.infrastructure;
 import ar.edu.uade.skillswap.application.port.out.BookingRepository;
 import ar.edu.uade.skillswap.application.model.NotificationMessage;
 import ar.edu.uade.skillswap.application.port.out.NotificationRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.infrastructure.config.FlywayConfig;
 import ar.edu.uade.skillswap.infrastructure.config.HibernateConfig;
 import ar.edu.uade.skillswap.infrastructure.persistence.JpaTransactionManager;
@@ -165,6 +167,7 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
         if (profiles.findByUserId(currentUser.currentUserId()).isEmpty()) {
             profiles.save(Profile.register(
                 currentUser.currentUserId(),
+                ActorType.PROFESSIONAL,
                 "Mateo Silva",
                 "Construyo productos digitales y acompaño personas que quieren crecer en tecnología.",
                 "America/Argentina/Buenos_Aires",
@@ -196,7 +199,8 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
             Modality.REMOTE,
             90,
             220,
-            Set.of("Java", "Arquitectura", "Clean Code")
+            Set.of("Java", "Arquitectura", "Clean Code"),
+            PublicationType.MENTORSHIP
         );
 
         seedPublishedPublication(
@@ -207,7 +211,8 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
             Modality.HYBRID,
             60,
             180,
-            Set.of("Entrevistas", "Backend", "Carrera")
+            Set.of("Entrevistas", "Backend", "Carrera"),
+            PublicationType.MENTORSHIP
         );
 
         seedPublishedPublication(
@@ -218,14 +223,15 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
             Modality.IN_PERSON,
             45,
             150,
-            Set.of("Portfolio", "UX", "Diseño")
+            Set.of("Portfolio", "UX", "Diseño"),
+            PublicationType.SERVICE
         );
     }
 
     private void seedProfile(String userId, String displayName, List<String> skills,
                              Set<NotificationChannelType> channels) {
         if (profiles.findByUserId(userId).isEmpty()) {
-            profiles.save(Profile.register(userId, displayName,
+            profiles.save(Profile.register(userId, ActorType.PROFESSIONAL, displayName,
                     "Mentor de la comunidad SkillSwap.", "America/Argentina/Buenos_Aires",
                     skills, List.of(), channels, List.of()));
         }
@@ -233,7 +239,7 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
 
     private void seedPublishedPublication(String authorId, String title, String description, String category,
                                           Modality modality, int durationMinutes, int price,
-                                          Set<String> tags) {
+                                          Set<String> tags, PublicationType type) {
         wallets.findByUserId(authorId).orElseGet(() -> wallets.save(Wallet.open(authorId, 0)));
         boolean exists = publications.findByAuthorUserId(authorId).stream()
             .anyMatch(item -> item.title().equalsIgnoreCase(title));
@@ -241,7 +247,8 @@ public final class SkillSwapApplicationWiring implements AutoCloseable {
             return;
         }
 
-        var publication = Publication.builder(authorId)
+        Profile author = profiles.findByUserId(authorId).orElseThrow();
+        var publication = Publication.builder(authorId, author.actorType(), type)
             .title(title)
             .description(description)
             .category(category)

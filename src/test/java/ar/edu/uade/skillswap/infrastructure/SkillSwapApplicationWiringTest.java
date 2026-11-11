@@ -4,6 +4,7 @@ import ar.edu.uade.skillswap.application.model.BookingData.BookingCommand;
 import ar.edu.uade.skillswap.application.model.BookingData.RequestCommand;
 import ar.edu.uade.skillswap.application.model.RatingData.SubmitCommand;
 import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.infrastructure.identity.MockIdentityClient;
@@ -81,7 +82,7 @@ class SkillSwapApplicationWiringTest {
 
         Fixture() {
             var profiles = new InMemoryProfileRepository();
-            profiles.save(Profile.register("mentor-ana", "Ana", "", "UTC", List.of("Java"),
+            profiles.save(Profile.register("mentor-ana", ActorType.PROFESSIONAL, "Ana", "", "UTC", List.of("Java"),
                     List.of(), Set.of(NotificationChannelType.EMAIL, NotificationChannelType.PUSH,
                             NotificationChannelType.IN_APP), List.of()));
             var email = new MockEmailClient() {

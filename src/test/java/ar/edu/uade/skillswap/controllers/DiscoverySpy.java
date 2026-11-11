@@ -8,6 +8,7 @@ import ar.edu.uade.skillswap.application.model.PublicationData.PublicationView;
 import ar.edu.uade.skillswap.application.port.in.DiscoveryUseCases;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -45,8 +46,8 @@ final class DiscoverySpy implements DiscoveryUseCases {
 
     static PublicationView view(String id, String authorName, double reputation) {
         LocalDateTime start = LocalDateTime.of(2026, 11, 10, 10, 0);
-        return new PublicationView(id, "author-" + id, "Mentoría " + id, "Descripción", "Tecnología",
-                Modality.HYBRID, 60, 4, 150, Set.of("Java"), PublicationStatus.PUBLISHED,
+        return new PublicationView(id, "author-" + id, PublicationType.MENTORSHIP, "Mentoría " + id, "Descripción",
+                "Tecnología", Modality.HYBRID, 60, 4, 150, Set.of("Java"), PublicationStatus.PUBLISHED,
                 List.of(new AvailabilityView("slot-" + id, start, start.plusHours(1), 4, 1)),
                 start.minusDays(1), 2, new AuthorView("author-" + id, authorName, reputation, 3));
     }

@@ -13,11 +13,13 @@ import ar.edu.uade.skillswap.application.model.PublicationData.CreateDraftComman
 import ar.edu.uade.skillswap.application.model.PublicationData.EditDraftCommand;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -56,6 +58,48 @@ class PublicationApplicationServiceTest {
     }
 
     @Test
+    void createsTheChosenTypeOnlyIfTheAuthorActorTypeAllowsIt() {
+        var publications = new InMemoryPublications();
+        var organization = serviceFor("org-1", publications);
+        var professional = serviceFor("author-1", publications);
+
+        var challenge = organization.createDraft(command("Hackatón de datos", PublicationType.CHALLENGE));
+        var service = professional.createDraft(command("Revisión de portfolio", PublicationType.SERVICE));
+        var forbidden = assertThrows(ApplicationException.class,
+                () -> professional.createDraft(command("Hackatón", PublicationType.CHALLENGE)));
+        var notAllowed = assertThrows(ApplicationException.class,
+                () -> organization.createDraft(command("Mentoría", PublicationType.MENTORSHIP)));
+
+        assertEquals(PublicationType.CHALLENGE, challenge.type());
+        assertEquals("Acme", challenge.author().displayName());
+        assertEquals(PublicationType.SERVICE, service.type());
+        assertEquals(PublicationType.CHALLENGE, publications.findById(challenge.id()).orElseThrow().type());
+        assertEquals(ApplicationErrorCode.FORBIDDEN, forbidden.code());
+        assertEquals(ApplicationErrorCode.FORBIDDEN, notAllowed.code());
+        assertEquals(2, publications.findByAuthorUserId("author-1").size()
+                + publications.findByAuthorUserId("org-1").size());
+    }
+
+    @Test
+    void aDraftRequiresAPublicationType() {
+        var error = assertThrows(IllegalArgumentException.class, () -> command("Java", null));
+
+        assertEquals("Falta el tipo de publicación", error.getMessage());
+    }
+
+    @Test
+    void listsThePublicationTypesTheCurrentUserCanCreate() {
+        var publications = new InMemoryPublications();
+
+        assertEquals(List.of(PublicationType.MENTORSHIP, PublicationType.SERVICE),
+                serviceFor("author-1", publications).allowedPublicationTypes());
+        assertEquals(List.of(PublicationType.CHALLENGE), serviceFor("org-1", publications).allowedPublicationTypes());
+        var withoutProfile = assertThrows(ApplicationException.class,
+                () -> serviceFor("sin-perfil", publications).allowedPublicationTypes());
+        assertEquals(ApplicationErrorCode.NOT_FOUND, withoutProfile.code());
+    }
+
+    @Test
     void noPermiteCrearUnBorradorSinPerfilDeAutor() {
         var publications = new InMemoryPublications();
         var service = new PublicationApplicationService(publications, profilesOf(), () -> "author-1",
@@ -78,7 +122,8 @@ class PublicationApplicationServiceTest {
     @Test
     void translatesOwnershipAndInvalidTransitionFailures() {
         var publications = new InMemoryPublications();
-        Publication existing = Publication.builder("another-author")
+        Publication existing = Publication.builder("another-author", ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP)
                 .title("Java")
                 .description("Mentoría")
                 .category("Tecnología")
@@ -96,7 +141,7 @@ class PublicationApplicationServiceTest {
                 existing.id(), "Java", "Mentoría", "Tecnología", Modality.REMOTE, 60, 2, Set.of())));
         assertEquals(ApplicationErrorCode.FORBIDDEN, forbidden.code());
 
-        Publication ownDraft = Publication.builder("user-1")
+        Publication ownDraft = Publication.builder("user-1", ActorType.PROFESSIONAL, PublicationType.MENTORSHIP)
                 .title("Java")
                 .description("Mentoría")
                 .category("Tecnología")
@@ -113,10 +158,17 @@ class PublicationApplicationServiceTest {
     }
 
     private static ProfileRepository profilesOf(String... userIds) {
-        Map<String, Profile> byUser = new HashMap<>();
+        List<Profile> profiles = new ArrayList<>();
         for (String userId : userIds) {
-            byUser.put(userId, Profile.register(userId, "Nombre " + userId, "", "UTC", Set.of(), Set.of(), Set.of()));
+            profiles.add(Profile.register(userId, ActorType.PROFESSIONAL, "Nombre " + userId, "", "UTC",
+                    Set.of(), Set.of(), Set.of()));
         }
+        return profilesWith(profiles.toArray(Profile[]::new));
+    }
+
+    private static ProfileRepository profilesWith(Profile... profiles) {
+        Map<String, Profile> byUser = new HashMap<>();
+        for (Profile profile : profiles) byUser.put(profile.userId(), profile);
         return new ProfileRepository() {
             @Override public Optional<Profile> findByUserId(String userId) { return Optional.ofNullable(byUser.get(userId)); }
             @Override public Optional<Profile> findByUserIdForUpdate(String userId) { return findByUserId(userId); }
@@ -128,8 +180,22 @@ class PublicationApplicationServiceTest {
     }
 
     private static CreateDraftCommand command(String title) {
+        return command(title, PublicationType.MENTORSHIP);
+    }
+
+    private static CreateDraftCommand command(String title, PublicationType type) {
         return new CreateDraftCommand(title, "Sesión práctica", "Tecnología", Modality.REMOTE,
-                60, 2, 20, Set.of("Java"), List.of(slotInput()));
+                60, 2, 20, Set.of("Java"), List.of(slotInput()), type);
+    }
+
+    /** Servicio para un usuario de un repositorio con una organización (org-1) y un profesional (author-1). */
+    private static PublicationApplicationService serviceFor(String userId, InMemoryPublications publications) {
+        Profile organization = Profile.register("org-1", ActorType.ORGANIZATION, "Acme", "", "UTC",
+                Set.of(), Set.of(), Set.of(), List.of());
+        Profile professional = Profile.register("author-1", ActorType.PROFESSIONAL, "Ana", "", "UTC",
+                Set.of(), Set.of(), Set.of());
+        return new PublicationApplicationService(publications, profilesWith(organization, professional),
+                () -> userId, new ImmediateTransactionManager());
     }
 
     private static AvailabilityInput slotInput() {

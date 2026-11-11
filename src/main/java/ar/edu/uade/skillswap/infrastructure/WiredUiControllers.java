@@ -105,7 +105,7 @@ public final class WiredUiControllers implements UiControllers,
     @Override
     public Models.Publicacion crearBorrador(String userId, String titulo, String descripcion,
                                            String categoria, Models.Modalidad modalidad,
-                                           int duracion, int precio) {
+                                           int duracion, int precio, Models.TipoPublicacion tipo) {
         return operations.execute(() -> {
             LocalDateTime startsAt = LocalDateTime.now().plusDays(1).withSecond(0).withNano(0);
             var command = new CreateDraftCommand(
@@ -118,10 +118,18 @@ public final class WiredUiControllers implements UiControllers,
                     precio,
                     Set.of(),
                     List.of(new AvailabilityInput(UUID.randomUUID().toString(), startsAt,
-                        startsAt.plusMinutes(duracion), 6))
+                        startsAt.plusMinutes(duracion), 6)),
+                    mapper.toPublicationType(tipo)
             );
             return toPublicacion(wiring.publicationService().createDraft(command));
         });
+    }
+
+    @Override
+    public List<Models.TipoPublicacion> tiposPublicacion(String userId) {
+        return operations.execute(() -> wiring.publicationService().allowedPublicationTypes().stream()
+                .map(mapper::toTipoPublicacion)
+                .toList());
     }
 
     @Override

@@ -1,10 +1,12 @@
 package ar.edu.uade.skillswap.domain;
 
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationBuilder;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,7 +48,8 @@ class PublicationBuilderTest {
 
     @Test
     void requiresEveryMandatoryField() {
-        assertThrows(IllegalArgumentException.class, () -> Publication.builder(" "));
+        assertThrows(IllegalArgumentException.class, () -> Publication.builder(" ", ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP));
         assertThrows(IllegalArgumentException.class, () -> completeBuilder().title(" ").build());
         assertThrows(IllegalArgumentException.class, () -> completeBuilder().description(null).build());
         assertThrows(IllegalArgumentException.class, () -> completeBuilder().category("").build());
@@ -87,7 +90,7 @@ class PublicationBuilderTest {
     }
 
     private static PublicationBuilder completeBuilder() {
-        return Publication.builder(AUTHOR)
+        return Publication.builder(AUTHOR, ActorType.PROFESSIONAL, PublicationType.MENTORSHIP)
                 .title("Java avanzado")
                 .description("Mentoría individual")
                 .category("Tecnología")
@@ -98,7 +101,7 @@ class PublicationBuilderTest {
     }
 
     private static PublicationBuilder builderWithoutDuration() {
-        return Publication.builder(AUTHOR)
+        return Publication.builder(AUTHOR, ActorType.PROFESSIONAL, PublicationType.MENTORSHIP)
                 .title("Java avanzado")
                 .description("Mentoría individual")
                 .category("Tecnología")
@@ -108,7 +111,7 @@ class PublicationBuilderTest {
     }
 
     private static PublicationBuilder builderWithoutCapacity() {
-        return Publication.builder(AUTHOR)
+        return Publication.builder(AUTHOR, ActorType.PROFESSIONAL, PublicationType.MENTORSHIP)
                 .title("Java avanzado")
                 .description("Mentoría individual")
                 .category("Tecnología")

@@ -24,9 +24,9 @@ public final class ProfileApplicationMapper {
                 .map(slot -> new AvailabilityView(slot.id(), slot.startsAt(), slot.endsAt(),
                         slot.capacity(), slot.reserved()))
                 .toList();
-        return new ProfileView(profile.id(), profile.userId(), profile.displayName(), profile.biography(),
-                profile.timeZone(), List.copyOf(profile.skills()), List.copyOf(profile.interests()),
-                profile.notificationChannels(), availability, profile.reputation(), profile.ratingCount(),
-                profile.active());
+        return new ProfileView(profile.id(), profile.userId(), profile.actorType(), profile.displayName(),
+                profile.biography(), profile.timeZone(), List.copyOf(profile.skills()),
+                List.copyOf(profile.interests()), profile.notificationChannels(), availability,
+                profile.reputation(), profile.ratingCount(), profile.active());
     }
 }

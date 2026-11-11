@@ -29,8 +29,8 @@ public final class PublicationApplicationMapper {
                 .map(slot -> new AvailabilityView(slot.id(), slot.startsAt(), slot.endsAt(),
                         slot.capacity(), slot.reserved()))
                 .toList();
-        return new PublicationView(publication.id(), publication.authorUserId(), publication.title(),
-                publication.description(), publication.category(), publication.modality(),
+        return new PublicationView(publication.id(), publication.authorUserId(), publication.type(),
+                publication.title(), publication.description(), publication.category(), publication.modality(),
                 publication.durationMinutes(), publication.capacity(), publication.basePrice().amount(),
                 publication.tags(), publication.status(), availability, publication.createdAt(),
                 publication.requestCount(), new AuthorView(author.userId(), author.displayName(),

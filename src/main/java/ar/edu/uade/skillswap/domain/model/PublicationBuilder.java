@@ -11,12 +11,15 @@ import java.util.Set;
  * Construye borradores de publicación paso a paso y delega las invariantes
  * del agregado en {@link Publication}.
  *
- * <p>Autor, título, descripción, categoría, modalidad, duración, cupo y precio
- * son obligatorios. Las etiquetas y franjas son opcionales para permitir crear
+ * <p>Autor, su tipo de actor, tipo de publicación, título, descripción, categoría,
+ * modalidad, duración, cupo y precio son obligatorios.
+ * Las etiquetas y franjas son opcionales para permitir crear
  * un borrador antes de definir su disponibilidad.</p>
  */
 public final class PublicationBuilder {
     private final String authorUserId;
+    private final ActorType authorType;
+    private final PublicationType type;
     private String title;
     private String description;
     private String category;
@@ -27,8 +30,10 @@ public final class PublicationBuilder {
     private final Set<String> tags = new LinkedHashSet<>();
     private final List<AvailabilitySlot> availability = new ArrayList<>();
 
-    PublicationBuilder(String authorUserId) {
+    PublicationBuilder(String authorUserId, ActorType authorType, PublicationType type) {
         this.authorUserId = required(authorUserId, "Falta autor de publicación");
+        this.authorType = Objects.requireNonNull(authorType, "Falta el tipo de actor del autor");
+        this.type = Objects.requireNonNull(type, "Falta el tipo de publicación");
     }
 
     public PublicationBuilder title(String title) {
@@ -106,8 +111,8 @@ public final class PublicationBuilder {
         Objects.requireNonNull(capacity, "Falta cupo de publicación");
         Objects.requireNonNull(basePrice, "Falta precio base");
 
-        Publication publication = Publication.draft(authorUserId, title, description, category,
-                modality, durationMinutes, capacity, basePrice, tags);
+        Publication publication = Publication.draft(authorUserId, authorType, type, title, description,
+                category, modality, durationMinutes, capacity, basePrice, tags);
         for (AvailabilitySlot slot : availability) {
             publication.addAvailability(authorUserId, slot);
         }

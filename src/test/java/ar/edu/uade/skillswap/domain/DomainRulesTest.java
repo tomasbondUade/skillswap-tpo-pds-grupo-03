@@ -1,5 +1,6 @@
 package ar.edu.uade.skillswap.domain;
 
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Booking;
 import ar.edu.uade.skillswap.domain.model.BookingStatus;
@@ -8,6 +9,7 @@ import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.Publication;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.Rating;
 import ar.edu.uade.skillswap.domain.model.RecentPopularityStrategy;
 import ar.edu.uade.skillswap.domain.model.SkillAffinityStrategy;
@@ -177,7 +179,8 @@ class DomainRulesTest {
 
     @Test
     void profilesProtectOwnershipAvailabilityAndDerivedReputation() {
-        Profile profile = Profile.register("provider", "Mentora", "", "America/Argentina/Buenos_Aires",
+        Profile profile = Profile.register("provider", ActorType.PROFESSIONAL, "Mentora", "",
+                "America/Argentina/Buenos_Aires",
                 Set.of("Java"), Set.of("Backend"), List.of(NotificationChannelType.IN_APP));
         LocalDateTime start = LocalDateTime.parse("2026-11-01T10:00:00");
         assertThrows(SecurityException.class,
@@ -194,7 +197,7 @@ class DomainRulesTest {
 
     @Test
     void profileActivatesAndDeactivatesLogicallyOnlyForItsOwner() {
-        Profile profile = Profile.register("provider", "Mentora", "", "UTC",
+        Profile profile = Profile.register("provider", ActorType.PROFESSIONAL, "Mentora", "", "UTC",
                 Set.of("Java"), Set.of("Backend"), List.of());
         Booking historicalBooking = booking(120);
         historicalBooking.accept("provider");
@@ -217,14 +220,17 @@ class DomainRulesTest {
 
     @Test
     void profileRejectsInvalidIdentityAndDoesNotPartiallyApplyInvalidDetails() {
-        assertThrows(IllegalArgumentException.class, () -> Profile.register(" ", "Mentora", "", "UTC",
+        assertThrows(IllegalArgumentException.class, () -> Profile.register(" ", ActorType.PROFESSIONAL,
+                "Mentora", "", "UTC",
                 Set.of(), Set.of(), List.of()));
-        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider", "Mentora", "", "UTC",
+        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider",
+                ActorType.PROFESSIONAL, "Mentora", "", "UTC",
                 Set.of(" "), Set.of(), List.of()));
-        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider", "Mentora", "", " ",
+        assertThrows(IllegalArgumentException.class, () -> Profile.register("provider",
+                ActorType.PROFESSIONAL, "Mentora", "", " ",
                 Set.of(), Set.of(), List.of()));
 
-        Profile profile = Profile.register("provider", "Mentora", "Bio", "UTC",
+        Profile profile = Profile.register("provider", ActorType.PROFESSIONAL, "Mentora", "Bio", "UTC",
                 List.of(" Java ", "Java", "SQL"), List.of("Backend"), List.of());
         assertEquals(Set.of("Java", "SQL"), profile.skills());
         assertThrows(IllegalArgumentException.class, () -> profile.updateDetails(
@@ -256,7 +262,7 @@ class DomainRulesTest {
 
     @Test
     void profileRecalculatesReputationAndRejectsDuplicateRatings() {
-        Profile profile = Profile.register("provider", "Mentora", "", "UTC",
+        Profile profile = Profile.register("provider", ActorType.PROFESSIONAL, "Mentora", "", "UTC",
                 Set.of("Java"), Set.of("Backend"), List.of());
         Rating first = Rating.restore("rating-1", "booking-1", "buyer-1", "provider",
                 5, "Muy clara", LocalDateTime.parse("2026-10-01T10:00:00"));
@@ -297,7 +303,8 @@ class DomainRulesTest {
 
     @Test
     void recommendationStrategiesRankCandidatesByDifferentBusinessRules() {
-        Profile profile = Profile.register("buyer", "Buyer", "", "America/Argentina/Buenos_Aires",
+        Profile profile = Profile.register("buyer", ActorType.PROFESSIONAL, "Buyer", "",
+                "America/Argentina/Buenos_Aires",
                 Set.of("Java"), Set.of("Backend"), List.of());
         Publication affinity = published("provider-a", "Java para entrevistas", List.of("Java"), 1);
         Publication popular = published("provider-b", "Comunicación", List.of("Liderazgo"), 3);
@@ -319,12 +326,14 @@ class DomainRulesTest {
     }
 
     private static Publication draft(String owner, String title, List<String> tags) {
-        return Publication.draft(owner, title, "Descripción", "Tecnología", Modality.REMOTE,
+        return Publication.draft(owner, ActorType.PROFESSIONAL, PublicationType.MENTORSHIP, title,
+                "Descripción", "Tecnología", Modality.REMOTE,
                 60, 1, new SkillCoins(100), tags);
     }
 
     private static Publication published(String owner, String title, List<String> tags, int requests) {
-        Publication publication = Publication.draft(owner, title, "Descripción", "Tecnología",
+        Publication publication = Publication.draft(owner, ActorType.PROFESSIONAL,
+                PublicationType.MENTORSHIP, title, "Descripción", "Tecnología",
                 Modality.REMOTE, 60, 2, new SkillCoins(100), tags);
         LocalDateTime startsAt = LocalDateTime.now().plusDays(7);
         publication.addAvailability(owner, AvailabilitySlot.of(startsAt, startsAt.plusHours(1), 2));

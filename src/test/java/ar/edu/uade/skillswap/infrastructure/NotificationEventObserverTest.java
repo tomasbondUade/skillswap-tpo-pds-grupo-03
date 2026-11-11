@@ -1,6 +1,7 @@
 package ar.edu.uade.skillswap.infrastructure;
 
 import ar.edu.uade.skillswap.application.event.DomainEvent;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
 import ar.edu.uade.skillswap.infrastructure.notification.NotificationFactory;
@@ -23,7 +24,7 @@ class NotificationEventObserverTest {
         var repository = new InMemoryNotificationRepository();
         var publisher = new InMemoryDomainEventPublisher();
         var profiles = new InMemoryProfileRepository();
-        profiles.save(Profile.register("provider", "Ana", "", "UTC", List.of(), List.of(),
+        profiles.save(Profile.register("provider", ActorType.PROFESSIONAL, "Ana", "", "UTC", List.of(), List.of(),
                 Set.of(NotificationChannelType.IN_APP), List.of()));
         var factory = new NotificationFactory(repository, new MockEmailClient(), new MockPushClient());
         var observer = new NotificationEventObserver(profiles, factory);

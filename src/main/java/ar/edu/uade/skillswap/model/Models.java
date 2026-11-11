@@ -9,6 +9,17 @@ public final class Models {
 
     public enum Modalidad { REMOTA, PRESENCIAL, HIBRIDA }
     public enum EstadoPublicacion { BORRADOR, PUBLICADA, PAUSADA, CERRADA, CANCELADA }
+
+    /** Tipo de publicación; {@code toString()} es el texto que muestra la pantalla. */
+    public enum TipoPublicacion {
+        MENTORIA("Mentoría"), SERVICIO("Servicio"), DESAFIO("Desafío");
+
+        private final String etiqueta;
+
+        TipoPublicacion(String etiqueta) { this.etiqueta = etiqueta; }
+
+        @Override public String toString() { return etiqueta; }
+    }
     public enum EstadoContratacion { PENDIENTE, ACEPTADA, CONFIRMADA, EN_CURSO, COMPLETADA, RECHAZADA, CANCELADA }
 
     public enum CodigoError {
@@ -50,18 +61,12 @@ public final class Models {
                               String categoria, Modalidad modalidad, int duracionMinutos,
                               int precio, double reputacion, String proveedor,
                               List<String> etiquetas, EstadoPublicacion estado,
-                              boolean destacada, List<FranjaDisponibilidad> franjasDisponibles) {
+                              boolean destacada, List<FranjaDisponibilidad> franjasDisponibles,
+                              TipoPublicacion tipo) {
         public Publicacion {
             etiquetas = List.copyOf(etiquetas == null ? List.of() : etiquetas);
             franjasDisponibles = List.copyOf(franjasDisponibles == null ? List.of() : franjasDisponibles);
-        }
-
-        public Publicacion(String id, String titulo, String descripcion, String categoria,
-                           Modalidad modalidad, int duracionMinutos, int precio, double reputacion,
-                           String proveedor, List<String> etiquetas, EstadoPublicacion estado,
-                           boolean destacada) {
-            this(id, titulo, descripcion, categoria, modalidad, duracionMinutos, precio,
-                    reputacion, proveedor, etiquetas, estado, destacada, List.of());
+            Objects.requireNonNull(tipo, "Falta el tipo de publicación");
         }
     }
 

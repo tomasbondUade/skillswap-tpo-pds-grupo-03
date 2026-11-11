@@ -271,6 +271,7 @@ public final class JpaPublicationRepository extends JpaRepositorySupport
         }
 
         managed.setAuthorUserId(publication.authorUserId());
+        managed.setType(publication.type().name());
         managed.setTitle(publication.title());
         managed.setDescription(publication.description());
         managed.setCategory(publication.category());

@@ -35,8 +35,8 @@ public final class ProfileApplicationService implements ProfileUseCases {
                 throw new ApplicationException(ApplicationErrorCode.CONFLICT,
                         "Ya existe un perfil para el usuario autenticado");
             }
-            Profile profile = Profile.register(actor, command.displayName(), command.biography(),
-                    command.timeZone(), command.skills(), command.interests(),
+            Profile profile = Profile.register(actor, command.actorType(), command.displayName(),
+                    command.biography(), command.timeZone(), command.skills(), command.interests(),
                     command.notificationChannels(), ProfileApplicationMapper.toAvailabilitySlots(command.availability()));
             return ProfileApplicationMapper.toView(profiles.save(profile));
         }));

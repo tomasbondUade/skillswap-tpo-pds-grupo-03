@@ -9,11 +9,13 @@ import ar.edu.uade.skillswap.application.port.out.CurrentUserProvider;
 import ar.edu.uade.skillswap.application.port.out.DomainEventPublisher;
 import ar.edu.uade.skillswap.application.port.out.PublicationRepository;
 import ar.edu.uade.skillswap.application.port.out.WalletRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.Booking;
 import ar.edu.uade.skillswap.domain.model.BookingStatus;
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.Publication;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import ar.edu.uade.skillswap.domain.model.SkillCoins;
 import ar.edu.uade.skillswap.domain.model.Wallet;
 import ar.edu.uade.skillswap.domain.policy.RefundPolicy;
@@ -167,6 +169,7 @@ class BookingApplicationServiceTest {
         private Fixture(int capacity) {
             publication = Publication.draft(
                     "provider",
+                    ActorType.PROFESSIONAL, PublicationType.MENTORSHIP,
                     "Java",
                     "Clases de Java",
                     "Tecnologia",

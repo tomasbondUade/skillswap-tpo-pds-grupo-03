@@ -1,6 +1,7 @@
 
 package ar.edu.uade.skillswap.infrastructure.persistence.mapper;
 
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.AvailabilitySlot;
 import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
 import ar.edu.uade.skillswap.domain.model.Profile;
@@ -36,6 +37,7 @@ public final class ProfileMapper {
 
         entity.setId(profile.id());
         entity.setUserId(profile.userId());
+        entity.setActorType(profile.actorType().name());
         entity.setDisplayName(profile.displayName());
         entity.setBiography(profile.biography());
         entity.setTimeZone(profile.timeZone());
@@ -139,6 +141,7 @@ public final class ProfileMapper {
         return new Profile(
                 entity.getId(),
                 entity.getUserId(),
+                ActorType.valueOf(entity.getActorType()),
                 entity.getDisplayName(),
                 entity.getBiography(),
                 entity.getTimeZone(),

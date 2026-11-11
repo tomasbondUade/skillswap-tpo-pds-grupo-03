@@ -5,6 +5,7 @@ import ar.edu.uade.skillswap.application.model.NotificationData.NotificationView
 import ar.edu.uade.skillswap.application.model.NotificationMessage;
 import ar.edu.uade.skillswap.application.port.out.NotificationRepository;
 import ar.edu.uade.skillswap.application.port.out.ProfileRepository;
+import ar.edu.uade.skillswap.domain.model.ActorType;
 import ar.edu.uade.skillswap.domain.model.NotificationChannelType;
 import ar.edu.uade.skillswap.domain.model.Profile;
 import ar.edu.uade.skillswap.infrastructure.notification.email.MockEmailClient;
@@ -148,7 +149,7 @@ class RatingNotificationEventPublisherTest {
 
     private static Profile profile(String userId) {
         return Profile.register(
-                userId, userId, "", "UTC",
+                userId, ActorType.PROFESSIONAL, userId, "", "UTC",
                 List.of(), List.of(), List.of());
     }
 

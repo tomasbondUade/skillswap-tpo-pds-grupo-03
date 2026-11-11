@@ -17,8 +17,11 @@ public interface UiControllers {
 
     interface PublicacionController {
         List<Publicacion> listarPropias(String userId);
-        Publicacion crearBorrador(String userId, String titulo, String descripcion,
-                                  String categoria, Modalidad modalidad, int duracion, int precio);
+        /** Crea un borrador del tipo elegido, que debe ser uno de {@link #tiposPublicacion}. */
+        Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria,
+                                  Modalidad modalidad, int duracion, int precio, TipoPublicacion tipo);
+        /** Tipos de publicación que puede crear el usuario, para ofrecerlos en el formulario. */
+        List<TipoPublicacion> tiposPublicacion(String userId);
         Publicacion cambiarEstado(String userId, String publicacionId, EstadoPublicacion estado);
     }
 

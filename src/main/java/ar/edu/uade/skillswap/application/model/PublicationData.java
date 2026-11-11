@@ -2,6 +2,7 @@ package ar.edu.uade.skillswap.application.model;
 
 import ar.edu.uade.skillswap.domain.model.Modality;
 import ar.edu.uade.skillswap.domain.model.PublicationStatus;
+import ar.edu.uade.skillswap.domain.model.PublicationType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -14,11 +15,12 @@ public final class PublicationData {
     public record CreateDraftCommand(String title, String description, String category,
                                      Modality modality, int durationMinutes, int capacity,
                                      int priceInSkillCoins, Set<String> tags,
-                                     List<ProfileData.AvailabilityInput> availability) {
+                                     List<ProfileData.AvailabilityInput> availability, PublicationType type) {
         public CreateDraftCommand {
             tags = Set.copyOf(tags == null ? Set.of() : tags);
             availability = List.copyOf(availability == null ? List.of() : availability);
             if (priceInSkillCoins < 0) throw new IllegalArgumentException("El precio no puede ser negativo");
+            if (type == null) throw new IllegalArgumentException("Falta el tipo de publicación");
         }
     }
 
@@ -36,9 +38,10 @@ public final class PublicationData {
     /** Datos públicos del autor que acompañan a cada publicación. */
     public record AuthorView(String userId, String displayName, double reputation, int ratingCount) {}
 
-    public record PublicationView(String id, String authorUserId, String title, String description,
-                                  String category, Modality modality, int durationMinutes, int capacity,
-                                  int priceInSkillCoins, Set<String> tags, PublicationStatus status,
+    public record PublicationView(String id, String authorUserId, PublicationType type, String title,
+                                  String description, String category, Modality modality,
+                                  int durationMinutes, int capacity, int priceInSkillCoins,
+                                  Set<String> tags, PublicationStatus status,
                                   List<ProfileData.AvailabilityView> availability,
                                   LocalDateTime createdAt, int requestCount, AuthorView author) {
         public PublicationView {
