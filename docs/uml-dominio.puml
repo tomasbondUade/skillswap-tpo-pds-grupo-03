@@ -65,7 +65,6 @@ package "domain.model" {
     ORGANIZATION
     + publicationTypes(): Set<PublicationType>
     + canPublish(type): boolean
-    + defaultPublicationType(): PublicationType
   }
 
   enum PublicationType {

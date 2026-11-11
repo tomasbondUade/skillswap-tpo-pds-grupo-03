@@ -118,7 +118,8 @@ class DiscoveryApplicationServiceTest {
 
     @Test
     void usesInjectedRecommendationStrategyWithAuthenticatedProfileAndLimit() {
-        Profile profile = Profile.register("user-1", "Ana", "", "UTC", Set.of("Java"), Set.of(), Set.of());
+        Profile profile = Profile.register("user-1", ActorType.PROFESSIONAL, "Ana", "", "UTC",
+                Set.of("Java"), Set.of(), Set.of());
         var repository = new StubPublications(List.of(publication("Java", "provider-1")), emptyPage());
         var strategy = new CapturingStrategy();
         var profiles = new StubProfiles(List.of(profile, profile("provider-1", 4.2, 3)));

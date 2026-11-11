@@ -150,7 +150,8 @@ class MySqlPersistenceIntegrationTest {
         LocalDateTime start = LocalDateTime.now().plusDays(3).withNano(0);
         var input = new ProfileData.RegisterCommand("Nombre", "Bio", "UTC", List.of("Java", "SQL"),
                 List.of("Diseño"), Set.of(NotificationChannelType.EMAIL, NotificationChannelType.IN_APP),
-                List.of(new ProfileData.AvailabilityInput("old-slot", start, start.plusHours(1), 2)));
+                List.of(new ProfileData.AvailabilityInput("old-slot", start, start.plusHours(1), 2)),
+                ActorType.PROFESSIONAL);
         service.register(input);
         assertEquals(ApplicationErrorCode.CONFLICT,
                 assertThrows(ApplicationException.class, () -> service.register(input)).code());
@@ -608,7 +609,7 @@ class MySqlPersistenceIntegrationTest {
     private Publication seed(int capacity, int balance) {
         return transactions.required(() -> {
             for (String id : List.of("provider", "buyer", "buyer2")) {
-                profiles.save(Profile.register(id, id, "", "UTC", List.of(), List.of(),
+                profiles.save(Profile.register(id, ActorType.PROFESSIONAL, id, "", "UTC", List.of(), List.of(),
                         Set.of(NotificationChannelType.IN_APP), List.of()));
                 wallets.save(Wallet.open(id, id.equals("buyer") ? balance : 0));
             }

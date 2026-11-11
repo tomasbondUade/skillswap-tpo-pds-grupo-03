@@ -17,8 +17,6 @@ public interface UiControllers {
 
     interface PublicacionController {
         List<Publicacion> listarPropias(String userId);
-        Publicacion crearBorrador(String userId, String titulo, String descripcion,
-                                  String categoria, Modalidad modalidad, int duracion, int precio);
         /** Crea un borrador del tipo elegido, que debe ser uno de {@link #tiposPublicacion}. */
         Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria,
                                   Modalidad modalidad, int duracion, int precio, TipoPublicacion tipo);

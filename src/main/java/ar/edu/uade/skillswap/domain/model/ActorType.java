@@ -27,9 +27,4 @@ public enum ActorType {
     public boolean canPublish(PublicationType type) {
         return publicationTypes.contains(type);
     }
-
-    /** Tipo que se usa cuando el autor no elige uno: el primero que puede crear. */
-    public PublicationType defaultPublicationType() {
-        return publicationTypes.iterator().next();
-    }
 }

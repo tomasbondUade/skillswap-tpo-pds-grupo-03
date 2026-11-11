@@ -12,7 +12,6 @@ import java.util.Set;
 public final class PublicationData {
     private PublicationData() {}
 
-    /** {@code type} nulo significa que el autor no eligió tipo: se usa el predeterminado de su actor. */
     public record CreateDraftCommand(String title, String description, String category,
                                      Modality modality, int durationMinutes, int capacity,
                                      int priceInSkillCoins, Set<String> tags,
@@ -21,15 +20,7 @@ public final class PublicationData {
             tags = Set.copyOf(tags == null ? Set.of() : tags);
             availability = List.copyOf(availability == null ? List.of() : availability);
             if (priceInSkillCoins < 0) throw new IllegalArgumentException("El precio no puede ser negativo");
-        }
-
-        /** Borrador sin tipo elegido, como lo crea la UI actual. */
-        public CreateDraftCommand(String title, String description, String category,
-                                  Modality modality, int durationMinutes, int capacity,
-                                  int priceInSkillCoins, Set<String> tags,
-                                  List<ProfileData.AvailabilityInput> availability) {
-            this(title, description, category, modality, durationMinutes, capacity, priceInSkillCoins, tags,
-                    availability, null);
+            if (type == null) throw new IllegalArgumentException("Falta el tipo de publicación");
         }
     }
 

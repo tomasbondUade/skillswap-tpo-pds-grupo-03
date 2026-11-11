@@ -32,15 +32,6 @@ public final class ProfileData {
             availability = List.copyOf(availability == null ? List.of() : availability);
             if (actorType == null) throw new IllegalArgumentException("Falta el tipo de actor");
         }
-
-        /** Registro de un perfil profesional, el caso de la consigna (§4.1). */
-        public RegisterCommand(String displayName, String biography, String timeZone,
-                               List<String> skills, List<String> interests,
-                               Set<NotificationChannelType> notificationChannels,
-                               List<AvailabilityInput> availability) {
-            this(displayName, biography, timeZone, skills, interests, notificationChannels, availability,
-                    ActorType.PROFESSIONAL);
-        }
     }
 
     public record UpdateCommand(String displayName, String biography, String timeZone,

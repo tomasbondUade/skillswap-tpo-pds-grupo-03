@@ -21,7 +21,8 @@ class WiredUiControllersTest {
         var search = assertThrows(PresentationException.class, () -> controllers.busqueda().buscar(null));
         assertEquals(Models.CodigoError.VALIDACION, search.error().codigo());
         var publication = assertThrows(PresentationException.class, () -> controllers.publicaciones()
-                .crearBorrador("user-mateo", "Mentoría", "Descripción", "Tecnología", null, 60, 100));
+                .crearBorrador("user-mateo", "Mentoría", "Descripción", "Tecnología", null, 60, 100,
+                        Models.TipoPublicacion.MENTORIA));
         assertEquals(Models.CodigoError.VALIDACION, publication.error().codigo());
         var wallet = assertThrows(PresentationException.class,
                 () -> controllers.wallet().acreditarDemo("user-mateo", -10));
@@ -60,7 +61,7 @@ class WiredUiControllersTest {
     void presentaLasTransicionesInvalidasComoErroresDeEstado() {
         var controllers = new WiredUiControllers();
         var draft = controllers.publicaciones().crearBorrador("user-mateo", "Mentoría",
-                "Descripción", "Tecnología", Modalidad.REMOTA, 60, 100);
+                "Descripción", "Tecnología", Modalidad.REMOTA, 60, 100, Models.TipoPublicacion.MENTORIA);
 
         var exception = assertThrows(PresentationException.class,
                 () -> controllers.publicaciones().cambiarEstado("user-mateo", draft.id(),
@@ -202,11 +203,12 @@ class WiredUiControllersTest {
         var service = controllers.publicaciones().crearBorrador("user-mateo", "Revisión de CV",
                 "Correcciones y sugerencias.", "Tecnología", Modalidad.REMOTA, 60, 90,
                 Models.TipoPublicacion.SERVICIO);
-        var withoutType = controllers.publicaciones().crearBorrador("user-mateo", "Mentoría Java",
-                "Sesión práctica.", "Tecnología", Modalidad.REMOTA, 60, 90);
+        var withoutType = assertThrows(PresentationException.class, () -> controllers.publicaciones()
+                .crearBorrador("user-mateo", "Mentoría Java", "Sesión práctica.", "Tecnología",
+                        Modalidad.REMOTA, 60, 90, null));
 
         assertEquals(Models.TipoPublicacion.SERVICIO, service.tipo());
-        assertEquals(Models.TipoPublicacion.MENTORIA, withoutType.tipo());
+        assertEquals(Models.CodigoError.VALIDACION, withoutType.error().codigo());
         assertTrue(controllers.publicaciones().listarPropias("user-mateo").stream()
                 .anyMatch(item -> item.id().equals(service.id())
                         && item.tipo() == Models.TipoPublicacion.SERVICIO));
@@ -229,7 +231,8 @@ class WiredUiControllersTest {
         void creaBorradoresPublicablesConDisponibilidadValida() {
         var controllers = new WiredUiControllers();
         var draft = controllers.publicaciones().crearBorrador("user-mateo", "Mentoría de integración",
-            "Práctica de arquitectura y testing.", "Tecnología", Modalidad.REMOTA, 60, 120);
+            "Práctica de arquitectura y testing.", "Tecnología", Modalidad.REMOTA, 60, 120,
+            Models.TipoPublicacion.MENTORIA);
 
         var published = controllers.publicaciones().cambiarEstado("user-mateo", draft.id(),
             Models.EstadoPublicacion.PUBLICADA);

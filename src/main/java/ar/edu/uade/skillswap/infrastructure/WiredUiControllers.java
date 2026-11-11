@@ -105,13 +105,6 @@ public final class WiredUiControllers implements UiControllers,
     @Override
     public Models.Publicacion crearBorrador(String userId, String titulo, String descripcion,
                                            String categoria, Models.Modalidad modalidad,
-                                           int duracion, int precio) {
-        return crearBorrador(userId, titulo, descripcion, categoria, modalidad, duracion, precio, null);
-    }
-
-    @Override
-    public Models.Publicacion crearBorrador(String userId, String titulo, String descripcion,
-                                           String categoria, Models.Modalidad modalidad,
                                            int duracion, int precio, Models.TipoPublicacion tipo) {
         return operations.execute(() -> {
             LocalDateTime startsAt = LocalDateTime.now().plusDays(1).withSecond(0).withNano(0);

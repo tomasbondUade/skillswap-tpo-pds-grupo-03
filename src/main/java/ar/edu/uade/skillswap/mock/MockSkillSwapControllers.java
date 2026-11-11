@@ -86,10 +86,6 @@ public final class MockSkillSwapControllers implements UiControllers,
     @Override public List<String> categorias() { return List.of("Todas", "Tecnología", "Diseño", "Creatividad", "Negocios", "Productividad"); }
     @Override public List<Publicacion> listarPropias(String userId) { return publicaciones.stream().filter(p -> p.proveedor().equals("Mateo Silva")).toList(); }
 
-    @Override public Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria, Modalidad modalidad, int duracion, int precio) {
-        return crearBorrador(userId, titulo, descripcion, categoria, modalidad, duracion, precio, TipoPublicacion.MENTORIA);
-    }
-
     @Override public Publicacion crearBorrador(String userId, String titulo, String descripcion, String categoria, Modalidad modalidad, int duracion, int precio, TipoPublicacion tipo) {
         if (!tiposPublicacion(userId).contains(tipo)) throw new IllegalArgumentException("Tu perfil no puede crear publicaciones de tipo " + tipo);
         Publicacion p = new Publicacion(UUID.randomUUID().toString(), titulo, descripcion, categoria, modalidad, duracion, precio, 0, "Mateo Silva", List.of(categoria), EstadoPublicacion.BORRADOR, false, List.of(), tipo);

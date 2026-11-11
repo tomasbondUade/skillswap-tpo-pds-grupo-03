@@ -164,7 +164,7 @@ class RatingApplicationServiceTest {
 
         private Profile profile(String userId) {
             return Profile.register(
-                    userId, userId, "", "UTC",
+                    userId, ActorType.PROFESSIONAL, userId, "", "UTC",
                     List.of(), List.of(), List.of());
         }
 

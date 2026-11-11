@@ -34,7 +34,7 @@ class UiModelMapperTest {
         }
         assertEquals(Models.TipoPublicacion.DESAFIO, mapper.toTipoPublicacion(PublicationType.CHALLENGE));
         assertEquals(PublicationType.SERVICE, mapper.toPublicationType(Models.TipoPublicacion.SERVICIO));
-        assertNull(mapper.toPublicationType(null));
+        assertThrows(IllegalArgumentException.class, () -> mapper.toPublicationType(null));
         assertEquals("Mentoría", Models.TipoPublicacion.MENTORIA.toString());
     }
 

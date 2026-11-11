@@ -57,7 +57,6 @@ public final class Models {
         public boolean disponible() { return cuposDisponibles > 0; }
     }
 
-    /** {@code tipo} es nulo cuando el origen de los datos no lo informa. */
     public record Publicacion(String id, String titulo, String descripcion,
                               String categoria, Modalidad modalidad, int duracionMinutos,
                               int precio, double reputacion, String proveedor,
@@ -67,22 +66,7 @@ public final class Models {
         public Publicacion {
             etiquetas = List.copyOf(etiquetas == null ? List.of() : etiquetas);
             franjasDisponibles = List.copyOf(franjasDisponibles == null ? List.of() : franjasDisponibles);
-        }
-
-        public Publicacion(String id, String titulo, String descripcion, String categoria,
-                           Modalidad modalidad, int duracionMinutos, int precio, double reputacion,
-                           String proveedor, List<String> etiquetas, EstadoPublicacion estado,
-                           boolean destacada, List<FranjaDisponibilidad> franjasDisponibles) {
-            this(id, titulo, descripcion, categoria, modalidad, duracionMinutos, precio,
-                    reputacion, proveedor, etiquetas, estado, destacada, franjasDisponibles, null);
-        }
-
-        public Publicacion(String id, String titulo, String descripcion, String categoria,
-                           Modalidad modalidad, int duracionMinutos, int precio, double reputacion,
-                           String proveedor, List<String> etiquetas, EstadoPublicacion estado,
-                           boolean destacada) {
-            this(id, titulo, descripcion, categoria, modalidad, duracionMinutos, precio,
-                    reputacion, proveedor, etiquetas, estado, destacada, List.of());
+            Objects.requireNonNull(tipo, "Falta el tipo de publicación");
         }
     }
 

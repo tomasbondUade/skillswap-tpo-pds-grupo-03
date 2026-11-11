@@ -51,9 +51,8 @@ public final class UiModelMapper {
         };
     }
 
-    /** {@code null} significa que no se eligió tipo; Application usa el predeterminado del autor. */
     public PublicationType toPublicationType(Models.TipoPublicacion tipo) {
-        if (tipo == null) return null;
+        if (tipo == null) throw new IllegalArgumentException("Falta el tipo de publicación");
         return switch (tipo) {
             case MENTORIA -> PublicationType.MENTORSHIP;
             case SERVICIO -> PublicationType.SERVICE;

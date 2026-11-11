@@ -81,14 +81,10 @@ class PublicationApplicationServiceTest {
     }
 
     @Test
-    void withoutAChosenTypeUsesTheDefaultOfTheAuthorActorType() {
-        var publications = new InMemoryPublications();
+    void aDraftRequiresAPublicationType() {
+        var error = assertThrows(IllegalArgumentException.class, () -> command("Java", null));
 
-        var mentorship = serviceFor("author-1", publications).createDraft(command("Java"));
-        var challenge = serviceFor("org-1", publications).createDraft(command("Datos"));
-
-        assertEquals(PublicationType.MENTORSHIP, mentorship.type());
-        assertEquals(PublicationType.CHALLENGE, challenge.type());
+        assertEquals("Falta el tipo de publicación", error.getMessage());
     }
 
     @Test
@@ -164,7 +160,8 @@ class PublicationApplicationServiceTest {
     private static ProfileRepository profilesOf(String... userIds) {
         List<Profile> profiles = new ArrayList<>();
         for (String userId : userIds) {
-            profiles.add(Profile.register(userId, "Nombre " + userId, "", "UTC", Set.of(), Set.of(), Set.of()));
+            profiles.add(Profile.register(userId, ActorType.PROFESSIONAL, "Nombre " + userId, "", "UTC",
+                    Set.of(), Set.of(), Set.of()));
         }
         return profilesWith(profiles.toArray(Profile[]::new));
     }
@@ -183,8 +180,7 @@ class PublicationApplicationServiceTest {
     }
 
     private static CreateDraftCommand command(String title) {
-        return new CreateDraftCommand(title, "Sesión práctica", "Tecnología", Modality.REMOTE,
-                60, 2, 20, Set.of("Java"), List.of(slotInput()));
+        return command(title, PublicationType.MENTORSHIP);
     }
 
     private static CreateDraftCommand command(String title, PublicationType type) {
@@ -196,7 +192,8 @@ class PublicationApplicationServiceTest {
     private static PublicationApplicationService serviceFor(String userId, InMemoryPublications publications) {
         Profile organization = Profile.register("org-1", ActorType.ORGANIZATION, "Acme", "", "UTC",
                 Set.of(), Set.of(), Set.of(), List.of());
-        Profile professional = Profile.register("author-1", "Ana", "", "UTC", Set.of(), Set.of(), Set.of());
+        Profile professional = Profile.register("author-1", ActorType.PROFESSIONAL, "Ana", "", "UTC",
+                Set.of(), Set.of(), Set.of());
         return new PublicationApplicationService(publications, profilesWith(organization, professional),
                 () -> userId, new ImmediateTransactionManager());
     }

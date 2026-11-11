@@ -68,19 +68,10 @@ public final class Profile {
         this.active = active;
     }
 
-    public static Profile register(String userId, String name, String biography, String timeZone,
-                                   Collection<String> skills, Collection<String> interests,
+    public static Profile register(String userId, ActorType actorType, String name, String biography,
+                                   String timeZone, Collection<String> skills, Collection<String> interests,
                                    Collection<NotificationChannelType> channels) {
-        return register(userId, name, biography, timeZone, skills, interests, channels, List.of());
-    }
-
-    /** Registra un perfil profesional, el caso de la consigna (§4.1). */
-    public static Profile register(String userId, String name, String biography, String timeZone,
-                                   Collection<String> skills, Collection<String> interests,
-                                   Collection<NotificationChannelType> channels,
-                                   Collection<AvailabilitySlot> availability) {
-        return register(userId, ActorType.PROFESSIONAL, name, biography, timeZone, skills, interests,
-                channels, availability);
+        return register(userId, actorType, name, biography, timeZone, skills, interests, channels, List.of());
     }
 
     public static Profile register(String userId, ActorType actorType, String name, String biography,

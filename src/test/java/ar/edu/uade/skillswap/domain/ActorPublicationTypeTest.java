@@ -29,8 +29,6 @@ class ActorPublicationTypeTest {
         assertEquals(List.of(PublicationType.MENTORSHIP, PublicationType.SERVICE),
                 List.copyOf(ActorType.PROFESSIONAL.publicationTypes()));
         assertEquals(List.of(PublicationType.CHALLENGE), List.copyOf(ActorType.ORGANIZATION.publicationTypes()));
-        assertEquals(PublicationType.MENTORSHIP, ActorType.PROFESSIONAL.defaultPublicationType());
-        assertEquals(PublicationType.CHALLENGE, ActorType.ORGANIZATION.defaultPublicationType());
         assertThrows(UnsupportedOperationException.class,
                 () -> ActorType.PROFESSIONAL.publicationTypes().add(PublicationType.CHALLENGE));
     }
@@ -59,9 +57,9 @@ class ActorPublicationTypeTest {
     }
 
     @Test
-    void registrationKeepsTheActorTypeAndDefaultsToProfessional() {
-        Profile professional = Profile.register("ana", "Ana", "", "UTC", List.of("Java"), List.of(),
-                Set.of(NotificationChannelType.IN_APP));
+    void registrationKeepsTheActorType() {
+        Profile professional = Profile.register("ana", ActorType.PROFESSIONAL, "Ana", "", "UTC", List.of("Java"),
+                List.of(), Set.of(NotificationChannelType.IN_APP));
         Profile organization = Profile.register("acme", ActorType.ORGANIZATION, "Acme", "Empresa", "UTC",
                 List.of(), List.of(), Set.of(NotificationChannelType.EMAIL), List.of());
 

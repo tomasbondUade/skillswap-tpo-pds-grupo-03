@@ -29,7 +29,7 @@ class ProfileApplicationServiceTest {
         var service = new ProfileApplicationService(profiles, () -> "  user-1  ", transactions);
 
         var result = service.register(new RegisterCommand("Ana", "Bio", "America/Argentina/Buenos_Aires",
-                List.of("Java"), List.of("Mentoría"), Set.of(), List.of()));
+                List.of("Java"), List.of("Mentoría"), Set.of(), List.of(), ActorType.PROFESSIONAL));
 
         assertEquals("user-1", result.userId());
         assertEquals(ActorType.PROFESSIONAL, result.actorType());
@@ -56,11 +56,13 @@ class ProfileApplicationServiceTest {
     @Test
     void rejectsDuplicateProfileAndUnauthenticatedRequestsWithStableErrors() {
         var profiles = new InMemoryProfiles();
-        profiles.save(Profile.register("user-1", "Ana", "", "UTC", Set.of(), Set.of(), Set.of()));
+        profiles.save(Profile.register("user-1", ActorType.PROFESSIONAL, "Ana", "", "UTC", Set.of(),
+                Set.of(), Set.of()));
         var service = new ProfileApplicationService(profiles, () -> "user-1", new ImmediateTransactionManager());
 
         var duplicate = assertThrows(ApplicationException.class, () -> service.register(
-                new RegisterCommand("Ana", "", "UTC", List.of(), List.of(), Set.of(), List.of())));
+                new RegisterCommand("Ana", "", "UTC", List.of(), List.of(), Set.of(), List.of(),
+                        ActorType.PROFESSIONAL)));
         assertEquals(ApplicationErrorCode.CONFLICT, duplicate.code());
 
         var unauthenticated = new ProfileApplicationService(profiles, () -> " ", new ImmediateTransactionManager());
@@ -71,7 +73,8 @@ class ProfileApplicationServiceTest {
     @Test
     void updateAndDeactivateDelegateChangesToProfile() {
         var profiles = new InMemoryProfiles();
-        profiles.save(Profile.register("user-1", "Ana", "Bio", "UTC", Set.of("Java"), Set.of(), Set.of()));
+        profiles.save(Profile.register("user-1", ActorType.PROFESSIONAL, "Ana", "Bio", "UTC",
+                Set.of("Java"), Set.of(), Set.of()));
         var service = new ProfileApplicationService(profiles, () -> "user-1", new ImmediateTransactionManager());
 
         var updated = service.update(new UpdateCommand("Ana B.", "Nueva bio", "UTC-3",

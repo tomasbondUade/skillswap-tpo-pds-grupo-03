@@ -21,7 +21,8 @@ class InMemoryRepositoriesTest {
     @Test
     void storesProfilesAndPublications() {
         var profiles = new InMemoryProfileRepository();
-        Profile profile = Profile.register("user-1", "Ana", "Bio", "UTC", Set.of("Java"), Set.of(), Set.of(), List.of());
+        Profile profile = Profile.register("user-1", ActorType.PROFESSIONAL, "Ana", "Bio", "UTC",
+                Set.of("Java"), Set.of(), Set.of(), List.of());
         profiles.save(profile);
 
         assertEquals("Ana", profiles.findByUserId("user-1").orElseThrow().displayName());
@@ -56,8 +57,10 @@ class InMemoryRepositoriesTest {
     @Test
     void buscaVariosPerfilesEnLoteOmitiendoInexistentesYRepetidos() {
         var profiles = new InMemoryProfileRepository();
-        profiles.save(Profile.register("ana", "Ana", "", "UTC", Set.of(), Set.of(), Set.of()));
-        profiles.save(Profile.register("beto", "Beto", "", "UTC", Set.of(), Set.of(), Set.of()));
+        profiles.save(Profile.register("ana", ActorType.PROFESSIONAL, "Ana", "", "UTC", Set.of(), Set.of(),
+                Set.of()));
+        profiles.save(Profile.register("beto", ActorType.PROFESSIONAL, "Beto", "", "UTC", Set.of(),
+                Set.of(), Set.of()));
 
         List<Profile> found = profiles.findByUserIds(List.of("ana", "ana", "nadie", "beto"));
 
